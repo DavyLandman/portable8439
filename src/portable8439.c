@@ -10,7 +10,7 @@ static uint8_t __ZEROES[16] = { 0 };
 static void pad_if_needed(poly1305_context *ctx, size_t size) {
     size_t padding = size % 16;
     if (padding != 0) {
-        poly1305_update(ctx, __ZEROES, padding);
+        poly1305_update(ctx, __ZEROES, 16 - padding);
     }
 }
 
@@ -41,8 +41,9 @@ static void poly1305_calculate_mac(
     size_t ad_size
 ) {
     // init poly key (section 2.6)
-    uint8_t poly_key[32] = {0}; 
-    chacha20_xor_stream(poly_key, key, 32, key, nonce, 0);
+    uint8_t poly_key[__POLY1305_KEY_SIZE] = {0}; 
+    uint8_t emtpy_block[__POLY1305_KEY_SIZE] = {0}; 
+    chacha20_xor_stream(poly_key, emtpy_block, __POLY1305_KEY_SIZE, key, nonce, 0);
     // start poly1305 mac
     poly1305_context poly_ctx;
     poly1305_init(&poly_ctx, poly_key);
@@ -81,15 +82,6 @@ void portable_chacha20_poly1305_encrypt(
     poly1305_calculate_mac(mac, cipher_text, plain_text_size, key, nonce, ad, ad_size);
 }
 
-static void print_hex(const uint8_t *dt, size_t len) {
-    for (int i = 0; i < len; i++) {
-        if (i > 0)
-            printf("");
-        printf("%02X", dt[i]);
-    }
-    printf("\n");
-}
-
 bool portable_chacha20_poly1305_decrypt(
     uint8_t *plain_text,
     const uint8_t key[RFC_8439_KEY_SIZE],
@@ -109,9 +101,5 @@ bool portable_chacha20_poly1305_decrypt(
         chacha20_xor_stream(plain_text, cipher_text, cipher_text_size, key, nonce, 1);
         return true;
     }
-    printf("Got mac: ");
-    print_hex(actual_mac, RFC_8439_MAC_SIZE);
-    printf("Expected mac: ");
-    print_hex(mac, RFC_8439_MAC_SIZE);
     return false;
 }

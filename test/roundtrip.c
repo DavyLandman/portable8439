@@ -1,6 +1,5 @@
 #include "../src/portable8439.h"
 #include "../src/chacha-portable/chacha-portable.h"
-#include "../src/chachar-avr/chacha.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -23,26 +22,9 @@ static void fill_crappy_random(void* target, size_t length, pcg32_random_t* rng)
     }
 }
 
-static void print_hex(const uint8_t *dt, size_t len) {
-    for (int i = 0; i < len; i++) {
-        if (i > 0)
-            printf("");
-        printf("%02X", dt[i]);
-    }
-    printf("\n");
-}
-
-
-struct chacha20_testvector {
-    uint8_t key[32];
-    uint8_t nonce[12];
-    uint8_t resulting_keystream[512];
-    int keystream_check_size;
-};
-
-
 #define MAX_TEST_SIZE (4096)
 int test8439(pcg32_random_t* rng) {
+    printf("Round trip chacha20-poly1305 sizes 0..4096: ");
     uint8_t plain[MAX_TEST_SIZE] = { 0};
     uint8_t ad[MAX_TEST_SIZE] = { 0 };
     uint8_t buffer[MAX_TEST_SIZE] = { 0 };
@@ -52,21 +34,23 @@ int test8439(pcg32_random_t* rng) {
 
     fill_crappy_random(plain, MAX_TEST_SIZE, rng);
     fill_crappy_random(ad, MAX_TEST_SIZE, rng);
-    fill_crappy_random(key, RFC_8439_KEY_SIZE, rng);
-    fill_crappy_random(nonce, RFC_8439_NONCE_SIZE, rng);
 
     for (int i = 0; i < MAX_TEST_SIZE; i++) {
+        fill_crappy_random(key, RFC_8439_KEY_SIZE, rng);
+        fill_crappy_random(nonce, RFC_8439_NONCE_SIZE, rng);
+
         uint8_t mac[RFC_8439_MAC_SIZE] = { 0 };
         portable_chacha20_poly1305_encrypt(mac, buffer, key, nonce, ad, i, plain, i);
-        if (!portable_chacha20_poly1305_decrypt(buffer2, key, nonce, ad, i, mac, buffer2, i)) {
-            printf("Failed encrypting %d bytes\n", i);
+        if (!portable_chacha20_poly1305_decrypt(buffer2, key, nonce, ad, i, mac, buffer, i)) {
+            printf("Failed decryping (tag) %d bytes\n", i);
             return 1;
         }
         if (memcmp(buffer2, plain, i) != 0) {
-            printf("Failed encrypting %d bytes\n", i);
+            printf("Incorrect decryption at %d bytes\n", i);
             return 1;
         }
     }
+    printf("success\n");
     return 0;
 }
 
@@ -75,15 +59,5 @@ int main(void) {
     pcg32_random_t rng;
     rng.state = rand();
     rng.inc = rand() | 1;
-    int result = 0;
-    for (int i = 0; i < 20; i++) {
-        result += test8439(&rng);
-    }
-    if (result == 0) {
-        printf("RFC8439 internal round trip success\n");
-    }
-    else {
-        printf("Failed %i times\n", result);
-    }
-    return result;
+    return test8439(&rng);
 }

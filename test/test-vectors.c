@@ -229,6 +229,21 @@ static int test_poly() {
             printf("success\n");
         }
     }
+    for (int i = 0; i <POLY_TEST_VECTORS; i++) {
+        struct poly_test_vector t = poly_rfc_tests[i];
+        printf("- %s streaming: ", t.title);
+        poly1305_context ctx;
+        poly1305_init(&ctx, t.key);
+        poly1305_update(&ctx, t.msg, t.size);
+        poly1305_finish(&ctx, tag);
+        if (memcmp(tag, t.tag, 16) != 0) {
+            printf("failed\n");
+            return -1;
+        }
+        else {
+            printf("success\n");
+        }
+    }
     printf("All test passed\n");
     return 0;
 }
