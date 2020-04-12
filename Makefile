@@ -16,6 +16,10 @@ bin/test-roundtrip: $(src) test/roundtrip.c
 	mkdir -p bin
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
+bin/bench: $(src) test/bench.c
+	mkdir -p bin
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
 test: bin/test-roundtrip bin/test-vectors
 	./bin/test-vectors
 	./bin/test-roundtrip
@@ -23,10 +27,19 @@ test: bin/test-roundtrip bin/test-vectors
 clean:
 	rm -f bin/*
 
+
+bench: bin/bench
+	./bin/bench
+
+
 unused: $(src) test/test-roundtrip.c
 	$(CC) -o bin/unused $^ $(LDFLAGS) $(CFLAGS) -ffunction-sections -fdata-sections -Wl,--gc-sections,--print-gc-sections
 
 test-windows: 
 	docker run --rm -v "/$(PWD):/app" silkeh/clang bash -c 'cd /app && CC=clang CFLAGS="-fsanitize=undefined" make clean test'
+
+bench-windows:
+	docker run --rm -v "/$(PWD):/app" silkeh/clang bash -c 'cd /app && CC=clang CFLAGS="-O3" make clean bench'
+
 
 test-linux: test test-dist
