@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CHAR_BIT > 8
+#    error "Systems without native octals not suppoted"
+#endif
+
 #define CHACHA20_KEY_SIZE (32)
 #define CHACHA20_NONCE_SIZE (12)
 
@@ -15,6 +19,12 @@ void chacha20_xor_stream(
         const uint8_t key[CHACHA20_KEY_SIZE],
         const uint8_t nonce[CHACHA20_NONCE_SIZE],
         uint32_t counter
+);
+
+void rfc8439_keygen(
+        uint8_t poly_key[32],
+        const uint8_t key[CHACHA20_KEY_SIZE],
+        const uint8_t nonce[CHACHA20_NONCE_SIZE]
 );
 
 #endif

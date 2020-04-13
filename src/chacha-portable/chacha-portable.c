@@ -2,11 +2,35 @@
 #include <string.h>
 #include <assert.h>
 
+// based on https://sourceforge.net/p/predef/wiki/Endianness/
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
+        __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#   define __HAVE_LITTLE_ENDIAN 1
+#elif defined(__LITTLE_ENDIAN__) || \
+        defined(__ARMEL__) || \
+        defined(__THUMBEL__) || \
+        defined(__AARCH64EL__) || \
+        defined(_MIPSEL) || \
+        defined(__MIPSEL) || \
+        defined(__XTENSA_EL__) || \
+        defined(__AVR__) || \
+        defined(LITTLE_ENDIAN)
+#   define __HAVE_LITTLE_ENDIAN 1
+#endif
+
+#if defined(__HAVE_LITTLE_ENDIAN) && !defined(TEST_SLOW_PATH)
+#define FAST_PATH
+#endif
+
+
 #define CHACHA20_STATE_WORDS (16)
 
+
 static inline uint32_t load32_le(const uint8_t *source) {
-    #if defined(UNALIGNED_32BIT_ACCESS) && defined(__LITTLE_ENDIAN) && CHAR_BIT == 8
-    return *((const uint32_t*)source; 
+    #ifdef FAST_PATH
+    uint32_t result;
+    memcpy(&result, source, 4);
+    return result;
     #else
     return 
            (uint32_t)source[0]
@@ -56,7 +80,7 @@ static inline uint32_t rotl32a(uint32_t x, uint32_t n) {
     a += b; d ^= a; d = rotl32a(d, 8); \
     c += d; b ^= c; b = rotl32a(b, 7);
 
-static void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b, int c, int d) {
+static inline void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b, int c, int d) {
     Qround(s[a], s[b], s[c], s[d])
 }
 
@@ -85,7 +109,7 @@ static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t outp
     __FIN(8) __FIN(9) __FIN(10) __FIN(11) __FIN(12) __FIN(13) __FIN(14) __FIN(15)
 
     #else
-    memcpy(output, start, CHACHA20_STATE_WORDS * sizeof(uint32_t));
+    memcpy(output, start, CHACHA20_STATE_WORDS * 4);
 
     for (int i = 0; i < 10; i++) {
         quarter_round(output, 0, 4,  8, 12);
@@ -104,18 +128,23 @@ static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t outp
     #endif
 }
 
+#define U8(x) ((uint8_t)((x) & 0xFF))
+
 static inline void xor32_le(uint8_t* dst, const uint8_t* src, const uint32_t* pad) {
-    #if defined(UNALIGNED_32BIT_ACCESS) && defined(__LITTLE_ENDIAN) && CHAR_BIT == 8
-    ((uint32_t*)((void*)dst))[0] = ((const uint32_t*)((const void*)dst))[0] ^ *pad;
+    #ifdef FAST_PATH
+    uint32_t value;
+    memcpy(&value, src, 4);
+    value ^= *pad;
+    memcpy(dst, &value, 4);
     #else
-    dst[0] = src[0] ^ (uint8_t)(*pad & 0xFF);
-    dst[1] = src[1] ^ (uint8_t)((*pad >> 8) & 0xFF);
-    dst[2] = src[2] ^ (uint8_t)((*pad >> 16) & 0xFF);
-    dst[3] = src[3] ^ (uint8_t)((*pad >> 24) & 0xFF);
+    dst[0] = src[0] ^ U8(*pad);
+    dst[1] = src[1] ^ U8(*pad >> 8);
+    dst[2] = src[2] ^ U8(*pad >> 16);
+    dst[3] = src[3] ^ U8(*pad >> 24);
     #endif
 }
 
-static void xor(void *dest, const void* source, uint32_t pad[CHACHA20_STATE_WORDS], int chunk_size) {
+static void xor_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS], int chunk_size) {
     int full_blocks = chunk_size / sizeof(uint32_t);
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     uint8_t* dst = dest;
@@ -128,11 +157,11 @@ static void xor(void *dest, const void* source, uint32_t pad[CHACHA20_STATE_WORD
     }
     switch(chunk_size % sizeof(uint32_t)) {
         case 3:
-            dst[2] = src[2] ^ (uint8_t)((*pad >> 16) & 0xFF);
+            dst[2] = src[2] ^ U8(*pad >> 16);
         case 2:
-            dst[1] = src[1] ^ (uint8_t)((*pad >> 8) & 0xFF);
+            dst[1] = src[1] ^ U8(*pad >> 8);
         case 1:
-            dst[0] = src[0] ^ (uint8_t)((*pad) & 0xFF);
+            dst[0] = src[0] ^ U8(*pad);
     }
 }
 
@@ -156,9 +185,39 @@ void chacha20_xor_stream(
         increment_counter(state);
 
         int block_size = (int)(MIN(CHACHA20_STATE_WORDS * sizeof(uint32_t), length));
-        xor(dst, src, pad, block_size);
+        xor_block(dst, src, pad, block_size);
         length -= block_size;
         dst += block_size;
         src += block_size;
     }
+}
+
+static inline void store32_le(uint8_t *target, const uint32_t *source) {
+    #ifdef FAST_PATH
+    memcpy(target, source, 4);
+    #else
+    target[0] = U8(*source);
+    target[1] = U8(*source >> 8);
+    target[2] = U8(*source >> 16);
+    target[3] = U8(*source >> 24);
+    #endif
+}
+
+void rfc8439_keygen(
+        uint8_t poly_key[32],
+        const uint8_t key[CHACHA20_KEY_SIZE],
+        const uint8_t nonce[CHACHA20_NONCE_SIZE]
+) {
+    uint32_t state[CHACHA20_STATE_WORDS] = {0};
+    uint32_t result[CHACHA20_STATE_WORDS] = {0};
+    initialize_state(state, key, nonce, 0);
+    core_block(state, result);
+    //serialize
+    #ifdef __UNALIGNED_FAST
+    memcpy(poly_key, result, 32);
+    #else
+    for (int i = 0; i < 32 / 4; i++) {
+        store32_le(poly_key + (i * 4), result + i);
+    }
+    #endif
 }

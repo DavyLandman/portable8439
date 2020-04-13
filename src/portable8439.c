@@ -30,7 +30,6 @@ static void write_64bit_int(poly1305_context *ctx, uint64_t value) {
     poly1305_update(ctx, result, 8);
 }
 
-
 static void poly1305_calculate_mac(
     uint8_t mac[RFC_8439_MAC_SIZE],
     const uint8_t *cipher_text,
@@ -42,8 +41,7 @@ static void poly1305_calculate_mac(
 ) {
     // init poly key (section 2.6)
     uint8_t poly_key[__POLY1305_KEY_SIZE] = {0}; 
-    uint8_t emtpy_block[__POLY1305_KEY_SIZE] = {0}; 
-    chacha20_xor_stream(poly_key, emtpy_block, __POLY1305_KEY_SIZE, key, nonce, 0);
+    rfc8439_keygen(poly_key, key, nonce);
     // start poly1305 mac
     poly1305_context poly_ctx;
     poly1305_init(&poly_ctx, poly_key);
