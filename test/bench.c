@@ -166,6 +166,20 @@ static double chacha_round(struct bench_data *bd, size_t test_size) {
     return bench_report(runs, test_size);
 }
 
+#define MIN(a,b) ((a) > (b) ? (b) : (a))
+
+static double chacha_poly_round(struct bench_data *bd, size_t test_size) {
+    run_data* runs = allocate_runs(test_size, "chacha20-poly1305");
+    for (uint32_t i = 0; i < runs->rounds; i++) {
+        TICK(runs, i);
+        for (uint32_t j = 0; j < runs->iterations; j++) {
+            portable_chacha20_poly1305_encrypt(bd->buffer2, bd->buffer1, bd->key, bd->nonce, bd->ad, MIN(test_size, 512), bd->plain, test_size);
+        }
+        TOCK(runs, i);
+    }
+    return bench_report(runs, test_size);
+}
+
 static const size_t test_sizes[] = {
     32, 63, 64, 511, 512, 1024, 8*1024, 32*1024, 64*1024, 128*1024, 512*1024, 1024*1024, MAX_TEST_SIZE
 };
@@ -173,16 +187,29 @@ static const size_t test_sizes[] = {
 #define TEST_SIZES_LENGTH (sizeof(test_sizes)/sizeof(size_t))
 
 
+static void report_speeds(double speeds[TEST_SIZES_LENGTH]) {
+    sort_double_array(speeds, TEST_SIZES_LENGTH);
+
+    printf("Median speed: %.1f MB/s\n", median_double_array(speeds, TEST_SIZES_LENGTH));
+    printf("Speed range: %.1f MB/s, %.1f MB/s...%.1f MB/s, %.1f MB/s\n", speeds[0], speeds[1], speeds[TEST_SIZES_LENGTH - 2], speeds[ TEST_SIZES_LENGTH - 1]);
+}
+
 static void bench_chacha(struct bench_data *bd) {
     double speeds[TEST_SIZES_LENGTH];
     printf("Running chacha20 benchmarks\n");
     for (size_t i = 0; i < TEST_SIZES_LENGTH; i++) {
         speeds[i] = chacha_round(bd, test_sizes[i]);
     }
-    sort_double_array(speeds, TEST_SIZES_LENGTH);
+    report_speeds(speeds);
+}
 
-    printf("Median speed: %.1f MB/s\n", median_double_array(speeds, TEST_SIZES_LENGTH));
-    printf("Speed range: %.1f MB/s, %.1f MB/s...%.1f MB/s, %.1f MB/s\n", speeds[0], speeds[1], speeds[TEST_SIZES_LENGTH - 2], speeds[ TEST_SIZES_LENGTH - 1]);
+static void bench_chacha_poly(struct bench_data *bd) {
+    double speeds[TEST_SIZES_LENGTH];
+    printf("Running chacha20-poly1305 benchmarks\n");
+    for (size_t i = 0; i < TEST_SIZES_LENGTH; i++) {
+        speeds[i] = chacha_poly_round(bd, test_sizes[i]);
+    }
+    report_speeds(speeds);
 }
 
 int main(void) {
@@ -198,6 +225,7 @@ int main(void) {
     fill_crappy_random(bd->nonce, RFC_8439_NONCE_SIZE, &rng);
 
     bench_chacha(bd);
+    bench_chacha_poly(bd);
 
     free(bd);
     return 0;
