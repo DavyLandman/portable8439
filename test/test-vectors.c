@@ -1,7 +1,6 @@
 #include "../src/chacha-portable/chacha-portable.h"
 #include "../src/poly1305-donna/poly1305-donna.h"
 #include "../src/portable8439.h"
-#include "../src/chacha-portable/portable-arch.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -388,32 +387,17 @@ static int test_aead() {
     return 0;
 }
 
-static void print_config() {
-    printf("Config:\n");
-    printf("- endianness:");
-    #ifdef __HAVE_LITTLE_ENDIAN
-    printf("little\n");
-    #else
-    printf("big\n");
-    #endif
-    printf("- unaligned: ");
-
-    #ifdef __UNALIGNED_ACCESS
-    printf("full\n");
-    #elif define(__UNALIGNED_32ACCESS)
-    printf("32bit\n");
-    #elif define(__UNALIGNED_ACCESS_ARM7)
-    printf("armv7-special\n");
-    #else
-    printf("not supported\n");
-    #endif
-}
 
 int main() {
-    print_config();
     int result = 0;
     result += test_chacha20();
     result += test_poly();
     result += test_aead();
+    if (result != 0) {
+        printf("%d test failed\n", result * -1);
+    }
+    else {
+        printf("All test succeeded\n");
+    }
     return result;
 }

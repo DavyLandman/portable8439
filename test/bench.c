@@ -64,26 +64,43 @@ struct bench_data {
     uint8_t buffer2[MAX_TEST_SIZE];
 };
 
-#define RUNS (20)
 
-struct run_data {
-    struct timespec begin[RUNS];
-    struct timespec end[RUNS];
-    double times[RUNS];
-};
+typedef struct run_data {
+    uint32_t rounds;
+    uint32_t iterations;
+    size_t bytes_per_round;
+    struct timespec *begin;
+    struct timespec *end;
+    double *times;
+} run_data;
+
+#define MINIMAL_BYTES (100*1024*1024)
+#define MINIMAL_BYTES_PER_ROUND (1024*1024)
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+
+static run_data* allocate_runs(size_t data_size) {
+    run_data *result = malloc(sizeof(run_data));
+    result->iterations = MAX(40, MINIMAL_BYTES_PER_ROUND / data_size);
+    result->bytes_per_round = result->iterations * data_size;
+    result->rounds = MAX(40, MINIMAL_BYTES / (result->iterations * data_size));
+    result->begin = calloc(result->rounds, sizeof(struct timespec));
+    result->end = calloc(result->rounds, sizeof(struct timespec));
+    result->times = calloc(result->rounds, sizeof(double));
+    return result;
+}
 
 static inline double duration(struct timespec *begin, struct timespec *end) {
     return (end->tv_nsec - begin->tv_nsec) / 1000000000.0 + (end->tv_sec  - begin->tv_sec);
 }
 
-static void bench_process(struct run_data *runs) {
-    for (int i = 0; i< RUNS; i++){
-        runs->times[i] = duration(&(runs->begin[i]), &(runs->end[i]));
+static void bench_process(run_data *runs) {
+    for (int i = 0; i< runs->rounds; i++){
+        runs->times[i] = duration(&(runs->begin[i]), &(runs->end[i])) / runs->iterations;
     }
 
     // bubble sort times array for quicker statistics and removing outliers
-    for (int i = 0; i < RUNS - 1; i++) {
-        for (int j = i + 1; j < RUNS; j++) {
+    for (int i = 0; i < runs->rounds - 1; i++) {
+        for (int j = i + 1; j < runs->rounds; j++) {
             if (runs->times[j] < runs->times[i]) {
                 double temp = runs->times[i];
                 runs->times[i] = runs->times[j];
@@ -93,32 +110,38 @@ static void bench_process(struct run_data *runs) {
     }
 }
 
-static inline double bench_min(struct run_data *runs) {
+static inline double bench_min(run_data *runs) {
     return runs->times[1];
 }
 
-static inline double bench_max(struct run_data *runs) {
-    return runs->times[RUNS - 2];
+static inline double bench_max(run_data *runs) {
+    return runs->times[runs->rounds - 2];
 }
 
 
 
-static double bench_median(struct run_data *runs) {
-    if (RUNS % 2 == 0) { // even so take mean of two center points
-        return ((runs->times[RUNS / 2] + runs->times[RUNS / 2 - 1]) / 2);
+static double bench_median(run_data *runs) {
+    if (runs->rounds % 2 == 0) { // even so take mean of two center points
+        return ((runs->times[runs->rounds / 2] + runs->times[runs->rounds / 2 - 1]) / 2);
     }
     else {
-        return runs->times[RUNS / 2];
+        return runs->times[runs->rounds / 2];
     }
 }
+
+#ifndef CLOCK_MONOTONIC_RAW
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
+#endif
 
 #define TICK(rd, i) clock_gettime(CLOCK_MONOTONIC_RAW, &(rd->begin[i]))
 #define TOCK(rd, i) clock_gettime(CLOCK_MONOTONIC_RAW, &(rd->end[i]))
 
-static void chacha_round(struct bench_data *bd, struct run_data* runs, size_t test_size) {
-    for (int i = 0; i < RUNS; i++) {
+static void chacha_round(struct bench_data *bd, size_t test_size) {
+    struct run_data* runs = allocate_runs(test_size);
+    printf("chacha20 %zu (%d*%d):\t", test_size, runs->iterations, runs->rounds);
+    for (uint32_t i = 0; i < runs->rounds; i++) {
         TICK(runs, i);
-        for (int j = 0; j < 10; j++) {
+        for (uint32_t j = 0; j < runs->iterations; j++) {
             chacha20_xor_stream(bd->buffer1, bd->plain, test_size, bd->key, bd->nonce, i);
         }
         TOCK(runs, i);
@@ -127,20 +150,23 @@ static void chacha_round(struct bench_data *bd, struct run_data* runs, size_t te
     double min = bench_min(runs);
     double max = bench_max(runs);
     double median = bench_median(runs);
-    printf("chacha20 %zu:\t %f ms ([%f..%f] aka %.3f%% spread)\n", test_size, median, min, max, ((max-min) / median) * 100);
+    double speed = (test_size / median) / (1024*1024);
+    printf("%f ms ([%f..%f] aka %.1f%% spread) \t %.3fMBps\n", median, min, max, ((max-min) / median) * 100, speed);
+    free(runs);
 }
 
 static void bench_chacha(struct bench_data *bd) {
-    struct run_data run;
-    chacha_round(bd, &run, 1);
-    chacha_round(bd, &run, 32);
-    chacha_round(bd, &run, 64);
-    chacha_round(bd, &run, 512);
-    chacha_round(bd, &run, 1024);
-    chacha_round(bd, &run, 8*1024);
-    chacha_round(bd, &run, 512*1024);
-    chacha_round(bd, &run, 1024*1024);
-    chacha_round(bd, &run, MAX_TEST_SIZE);
+    //chacha_round(bd, 1);
+    chacha_round(bd, 32);
+    chacha_round(bd, 63); 
+    chacha_round(bd, 64); 
+    chacha_round(bd, 511);
+    chacha_round(bd, 512);
+    chacha_round(bd, 1024);
+    chacha_round(bd, 8*1024);
+    chacha_round(bd, 512*1024);
+    chacha_round(bd, 1024*1024);
+    chacha_round(bd, MAX_TEST_SIZE);
 }
 
 int main(void) {
