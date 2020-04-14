@@ -12,6 +12,7 @@
         defined(__AARCH64EL__) || \
         defined(_MIPSEL) || \
         defined(__MIPSEL) || \
+        defined(__MIPSEL__) || \
         defined(__XTENSA_EL__) || \
         defined(__AVR__) || \
         defined(LITTLE_ENDIAN)
