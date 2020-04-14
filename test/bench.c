@@ -80,7 +80,7 @@ typedef struct run_data {
 
 static run_data* allocate_runs(size_t data_size, const char* label) {
     run_data *result = malloc(sizeof(run_data));
-    result->iterations = MAX(40, MINIMAL_BYTES_PER_ROUND / data_size);
+    result->iterations = MAX(20, MINIMAL_BYTES_PER_ROUND / data_size);
     result->bytes_per_round = result->iterations * data_size;
     result->rounds = MAX(40, MINIMAL_BYTES / (result->iterations * data_size));
     result->begin = calloc(result->rounds, sizeof(struct timespec));
@@ -167,7 +167,7 @@ static double chacha_round(struct bench_data *bd, size_t test_size) {
 }
 
 static const size_t test_sizes[] = {
-    32, 63, 64, 511, 512, 1024, 8*1024, 512*1024, 1024*1024, MAX_TEST_SIZE
+    32, 63, 64, 511, 512, 1024, 8*1024, 32*1024, 64*1024, 128*1024, 512*1024, 1024*1024, MAX_TEST_SIZE
 };
 
 #define TEST_SIZES_LENGTH (sizeof(test_sizes)/sizeof(size_t))
