@@ -146,27 +146,44 @@ static inline void xor32_le(uint8_t* dst, const uint8_t* src, const uint32_t* pa
     #endif
 }
 
+static inline void xor_full_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
+    uint8_t* dst = dest;
+    const uint8_t* src = source;
+    for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
+        xor32_le(dst + (i * sizeof(uint32_t)), src + (i * sizeof(uint32_t)), pad + i);
+    }
+}
+
 static void xor_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS], int chunk_size) {
     int full_blocks = chunk_size / sizeof(uint32_t);
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     uint8_t* dst = dest;
     const uint8_t* src = source;
     for (int i = 0; i < full_blocks; i++) {
-        xor32_le(dst, src, pad);
-        pad++;
-        dst += sizeof(uint32_t);
-        src += sizeof(uint32_t);
+        xor32_le(dst + (i * sizeof(uint32_t)), src + (i * sizeof(uint32_t)), pad + i);
     }
+
+    dst += full_blocks * sizeof(uint32_t);
+    src += full_blocks * sizeof(uint32_t);
+    pad += full_blocks;
+
     switch(chunk_size % sizeof(uint32_t)) {
-        case 3:
-            dst[2] = src[2] ^ U8(*pad >> 16);
-        case 2:
-            dst[1] = src[1] ^ U8(*pad >> 8);
         case 1:
             dst[0] = src[0] ^ U8(*pad);
+            break;
+        case 2:
+            dst[0] = src[0] ^ U8(*pad);
+            dst[1] = src[1] ^ U8(*pad >> 8);
+            break;
+        case 3:
+            dst[0] = src[0] ^ U8(*pad);
+            dst[1] = src[1] ^ U8(*pad >> 8);
+            dst[2] = src[2] ^ U8(*pad >> 16);
+            break;
     }
 }
 
+#define CHACHA20_BLOCK_SIZE ((CHACHA20_STATE_WORDS * sizeof(uint32_t)))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 void chacha20_xor_stream(
         void *dest, 
@@ -182,15 +199,18 @@ void chacha20_xor_stream(
     uint32_t pad[CHACHA20_STATE_WORDS] = {0};
     uint8_t* dst = dest;
     const uint8_t* src = source;
-    while (length > 0) {
+    size_t full_blocks = length / CHACHA20_BLOCK_SIZE;
+    for (size_t b = 0; b < full_blocks; b++) {
         core_block(state, pad);
         increment_counter(state);
-
-        int block_size = (int)(MIN(CHACHA20_STATE_WORDS * sizeof(uint32_t), length));
-        xor_block(dst, src, pad, block_size);
-        length -= block_size;
-        dst += block_size;
-        src += block_size;
+        xor_full_block(dst, src, pad);
+        dst += CHACHA20_BLOCK_SIZE;
+        src += CHACHA20_BLOCK_SIZE;
+    }
+    size_t last_block = length % CHACHA20_BLOCK_SIZE;
+    if (last_block > 0 ) {
+        core_block(state, pad);
+        xor_block(dst, src, pad, last_block);
     }
 }
 
