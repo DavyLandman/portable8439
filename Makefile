@@ -2,6 +2,7 @@
 
 src = $(wildcard src/*.c) $(wildcard src/chacha-portable/*.c) $(wildcard src/poly1305-donna/*.c)
 
+CC?=gcc
 CFLAGS?=-O3
 CFLAGS+=-std=gnu99 -pedantic -Wall -Wextra -Isrc -Isrc/chacha-portable -Isrc/poly1305-donna
 LDFLAGS = 
@@ -37,7 +38,7 @@ unused: $(src) test/test-roundtrip.c
 	$(CC) -o bin/unused $^ $(LDFLAGS) $(CFLAGS) -ffunction-sections -fdata-sections -Wl,--gc-sections,--print-gc-sections
 
 test-windows: 
-	docker run --rm -v "/$(PWD):/app" silkeh/clang bash -c 'cd /app && CC=clang CFLAGS="-fsanitize=undefined" make clean test'
+	docker run --rm -v "/$(PWD):/app" silkeh/clang bash -c 'cd /app && CC=clang CFLAGS="-fsanitize=undefined -O3" make clean test'
 
 bench-windows:
 	docker run --rm -v "/$(PWD):/app" silkeh/clang bash -c 'cd /app && CC=clang CFLAGS="-O3" make clean bench'
