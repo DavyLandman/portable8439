@@ -90,7 +90,7 @@ static inline void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b,
     x(8) x(9) x(10) x(11) x(12) x(13) x(14) x(15)
 
 static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t output[CHACHA20_STATE_WORDS]) {
-    #if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__)
+    #if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__) && !defined(TEST_SLOW_PATH)
     // instead of working on the array, we let the compiler allocate 16 local variables on the stack
     // this saves quite some speed
     #define __LV(i) uint32_t __s##i = start[i];
@@ -236,7 +236,7 @@ void rfc8439_keygen(
     initialize_state(state, key, nonce, 0);
     core_block(state, result);
     //serialize
-    #ifdef __UNALIGNED_FAST
+    #ifdef FAST_PATH
     memcpy(poly_key, result, 32);
     #else
     for (int i = 0; i < 32 / 4; i++) {
