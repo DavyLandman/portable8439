@@ -149,6 +149,7 @@ static inline void xor32_le(uint8_t* dst, const uint8_t* src, const uint32_t* pa
 static inline void xor_full_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
     uint8_t* dst = dest;
     const uint8_t* src = source;
+    // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
         xor32_le(dst + (i * sizeof(uint32_t)), src + (i * sizeof(uint32_t)), pad + i);
     }
@@ -193,10 +194,10 @@ void chacha20_xor_stream(
         const uint8_t nonce[CHACHA20_NONCE_SIZE],
         uint32_t counter
 ) {
-    uint32_t state[CHACHA20_STATE_WORDS] = {0};
+    uint32_t state[CHACHA20_STATE_WORDS];
     initialize_state(state, key, nonce, counter);
 
-    uint32_t pad[CHACHA20_STATE_WORDS] = {0};
+    uint32_t pad[CHACHA20_STATE_WORDS];
     uint8_t* dst = dest;
     const uint8_t* src = source;
     size_t full_blocks = length / CHACHA20_BLOCK_SIZE;
@@ -230,8 +231,8 @@ void rfc8439_keygen(
         const uint8_t key[CHACHA20_KEY_SIZE],
         const uint8_t nonce[CHACHA20_NONCE_SIZE]
 ) {
-    uint32_t state[CHACHA20_STATE_WORDS] = {0};
-    uint32_t result[CHACHA20_STATE_WORDS] = {0};
+    uint32_t state[CHACHA20_STATE_WORDS];
+    uint32_t result[CHACHA20_STATE_WORDS];
     initialize_state(state, key, nonce, 0);
     core_block(state, result);
     //serialize
