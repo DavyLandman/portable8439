@@ -146,7 +146,7 @@ static inline void xor32_le(uint8_t* dst, const uint8_t* src, const uint32_t* pa
     #endif
 }
 
-static inline void xor_full_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
+static void xor_full_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
     uint8_t* dst = dest;
     const uint8_t* src = source;
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
