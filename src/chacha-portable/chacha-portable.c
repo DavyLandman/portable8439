@@ -85,12 +85,16 @@ static inline void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b,
     Qround(s[a], s[b], s[c], s[d])
 }
 
+#define TIMES16(x) \
+    x(0) x(1) x(2)  x(3)  x(4)  x(5)  x(6)  x(7) \
+    x(8) x(9) x(10) x(11) x(12) x(13) x(14) x(15)
+
 static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t output[CHACHA20_STATE_WORDS]) {
-    #if defined(BIG_STACK) && !defined(OPTIMIZE_SIZE)
+    #if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__)
+    // instead of working on the array, we let the compiler allocate 16 local variables on the stack
+    // this saves quite some speed
     #define __LV(i) uint32_t __s##i = start[i];
-    __LV(0) __LV(1) __LV(2)  __LV(3)  __LV(4)  __LV(5)  __LV(6)  __LV(7)
-    __LV(8) __LV(9) __LV(10) __LV(11) __LV(12) __LV(13) __LV(14) __LV(15)
-    #undef __LV
+    TIMES16(__LV)
 
     #define __Q(a,b,c,d) Qround(__s##a, __s##b, __s##c, __s##d)
     for (int i = 0; i < 10; i++) {
@@ -103,12 +107,9 @@ static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t outp
         __Q(2, 7,  8, 13);
         __Q(3, 4,  9, 14);
     }
-    #undef __Q
 
     #define __FIN(i) output[i] = start[i] + __s##i;
-    __FIN(0) __FIN(1) __FIN(2)  __FIN(3)  __FIN(4)  __FIN(5)  __FIN(6)  __FIN(7)
-    __FIN(8) __FIN(9) __FIN(10) __FIN(11) __FIN(12) __FIN(13) __FIN(14) __FIN(15)
-
+    TIMES16(__FIN)
     #else
     memcpy(output, start, CHACHA20_STATE_WORDS * 4);
 
