@@ -20,7 +20,11 @@
 #endif
 
 #if defined(__HAVE_LITTLE_ENDIAN) && !defined(TEST_SLOW_PATH)
-#define FAST_PATH
+#   define FAST_PATH
+#endif
+
+#if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__) && !defined(TEST_SLOW_PATH)
+#   define BIG_CODE
 #endif
 
 
@@ -81,16 +85,18 @@ static inline uint32_t rotl32a(uint32_t x, uint32_t n) {
     a += b; d ^= a; d = rotl32a(d, 8); \
     c += d; b ^= c; b = rotl32a(b, 7);
 
+#ifndef BIG_CODE
 static inline void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b, int c, int d) {
     Qround(s[a], s[b], s[c], s[d])
 }
+#endif
 
 #define TIMES16(x) \
     x(0) x(1) x(2)  x(3)  x(4)  x(5)  x(6)  x(7) \
     x(8) x(9) x(10) x(11) x(12) x(13) x(14) x(15)
 
 static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t output[CHACHA20_STATE_WORDS]) {
-    #if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__) && !defined(TEST_SLOW_PATH)
+    #ifdef BIG_CODE 
     // instead of working on the array, we let the compiler allocate 16 local variables on the stack
     // this saves quite some speed
     #define __LV(i) uint32_t __s##i = start[i];
