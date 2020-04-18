@@ -40,7 +40,7 @@ int test8439(pcg32_random_t* rng) {
         fill_crappy_random(nonce, RFC_8439_NONCE_SIZE, rng);
 
         size_t cipher_size = portable_chacha20_poly1305_encrypt(buffer, key, nonce, ad, i, plain, i);
-        if (portable_chacha20_poly1305_decrypt(buffer2, key, nonce, ad, i, buffer, cipher_size) == -1) {
+        if (portable_chacha20_poly1305_decrypt(buffer2, key, nonce, ad, i, buffer, cipher_size) == -1ul) {
             printf("Failed decryping (tag) %d bytes\n", i);
             return 1;
         }

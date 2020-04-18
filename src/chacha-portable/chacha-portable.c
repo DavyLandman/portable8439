@@ -221,16 +221,14 @@ void chacha20_xor_stream(
     }
 }
 
+#ifndef FAST_PATH
 static inline void store32_le(uint8_t *target, const uint32_t *source) {
-    #ifdef FAST_PATH
-    memcpy(target, source, 4);
-    #else
     target[0] = U8(*source);
     target[1] = U8(*source >> 8);
     target[2] = U8(*source >> 16);
     target[3] = U8(*source >> 24);
-    #endif
 }
+#endif
 
 void rfc8439_keygen(
         uint8_t poly_key[32],
