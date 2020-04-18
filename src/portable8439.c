@@ -31,7 +31,7 @@ static void write_64bit_int(poly1305_context *ctx, uint64_t value) {
 }
 
 static void poly1305_calculate_mac(
-    uint8_t mac[RFC_8439_MAC_SIZE],
+    uint8_t *mac,
     const uint8_t *cipher_text,
     size_t cipher_text_size,
     const uint8_t key[RFC_8439_KEY_SIZE],
@@ -66,8 +66,7 @@ static void poly1305_calculate_mac(
 }
 
 
-void portable_chacha20_poly1305_encrypt(
-    uint8_t mac[RFC_8439_MAC_SIZE],
+size_t portable_chacha20_poly1305_encrypt(
     uint8_t *cipher_text,
     const uint8_t key[RFC_8439_KEY_SIZE],
     const uint8_t nonce[RFC_8439_NONCE_SIZE],
@@ -77,27 +76,29 @@ void portable_chacha20_poly1305_encrypt(
     size_t plain_text_size
 ) {
     chacha20_xor_stream(cipher_text, plain_text, plain_text_size, key, nonce, 1);
-    poly1305_calculate_mac(mac, cipher_text, plain_text_size, key, nonce, ad, ad_size);
+    poly1305_calculate_mac(cipher_text + plain_text_size, cipher_text, plain_text_size, key, nonce, ad, ad_size);
+    return plain_text_size + RFC_8439_MAC_SIZE;
 }
 
-bool portable_chacha20_poly1305_decrypt(
+size_t portable_chacha20_poly1305_decrypt(
     uint8_t *plain_text,
     const uint8_t key[RFC_8439_KEY_SIZE],
     const uint8_t nonce[RFC_8439_NONCE_SIZE],
     const uint8_t *ad, // can be NULL for no Additional Data
     size_t ad_size,  
-    const uint8_t mac[RFC_8439_MAC_SIZE],
     const uint8_t *cipher_text,
     size_t cipher_text_size
 ) {
     // first we calculate the mac and see if it lines up, only then do we decrypt
     uint8_t actual_mac[RFC_8439_MAC_SIZE] = { 0 };
-    poly1305_calculate_mac(actual_mac, cipher_text, cipher_text_size, key, nonce, ad, ad_size);
+    size_t actual_size = cipher_text_size - RFC_8439_MAC_SIZE;
 
-    if (poly1305_verify(mac, actual_mac)) {
+    poly1305_calculate_mac(actual_mac, cipher_text, actual_size, key, nonce, ad, ad_size);
+
+    if (poly1305_verify(cipher_text + actual_size, actual_mac)) {
         // valid mac, so decrypt cipher_text
-        chacha20_xor_stream(plain_text, cipher_text, cipher_text_size, key, nonce, 1);
-        return true;
+        chacha20_xor_stream(plain_text, cipher_text, actual_size, key, nonce, 1);
+        return actual_size;
     }
-    return false;
+    return -1;
 }

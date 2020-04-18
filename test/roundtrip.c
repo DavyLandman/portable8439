@@ -27,7 +27,7 @@ int test8439(pcg32_random_t* rng) {
     printf("Round trip chacha20-poly1305 sizes 0..4096: ");
     uint8_t plain[MAX_TEST_SIZE] = { 0};
     uint8_t ad[MAX_TEST_SIZE] = { 0 };
-    uint8_t buffer[MAX_TEST_SIZE] = { 0 };
+    uint8_t buffer[MAX_TEST_SIZE + RFC_8439_MAC_SIZE] = { 0 };
     uint8_t buffer2[MAX_TEST_SIZE] = { 0 };
     uint8_t key[RFC_8439_KEY_SIZE] = { 0 };
     uint8_t nonce[RFC_8439_NONCE_SIZE] = { 0 };
@@ -39,9 +39,8 @@ int test8439(pcg32_random_t* rng) {
         fill_crappy_random(key, RFC_8439_KEY_SIZE, rng);
         fill_crappy_random(nonce, RFC_8439_NONCE_SIZE, rng);
 
-        uint8_t mac[RFC_8439_MAC_SIZE] = { 0 };
-        portable_chacha20_poly1305_encrypt(mac, buffer, key, nonce, ad, i, plain, i);
-        if (!portable_chacha20_poly1305_decrypt(buffer2, key, nonce, ad, i, mac, buffer, i)) {
+        size_t cipher_size = portable_chacha20_poly1305_encrypt(buffer, key, nonce, ad, i, plain, i);
+        if (portable_chacha20_poly1305_decrypt(buffer2, key, nonce, ad, i, buffer, cipher_size) == -1) {
             printf("Failed decryping (tag) %d bytes\n", i);
             return 1;
         }

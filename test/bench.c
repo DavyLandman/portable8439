@@ -29,8 +29,7 @@ struct bench_data {
     uint8_t ad[MAX_TEST_SIZE];
     uint8_t key[RFC_8439_KEY_SIZE];
     uint8_t nonce[RFC_8439_NONCE_SIZE];
-    uint8_t buffer1[MAX_TEST_SIZE];
-    uint8_t buffer2[MAX_TEST_SIZE];
+    uint8_t cipher[MAX_TEST_SIZE + RFC_8439_MAC_SIZE];
 };
 
 
@@ -81,10 +80,10 @@ static double median_double_array(const double *array, size_t len) {
         } \
     }
 
-BENCH(chacha, "chacha20", chacha20_xor_stream(bd->buffer1, bd->plain, test_size, bd->key, bd->nonce, r))
+BENCH(chacha, "chacha20", chacha20_xor_stream(bd->cipher, bd->plain, test_size, bd->key, bd->nonce, r))
 
 #define MIN(a,b) ((a) > (b) ? (b) : (a))
-BENCH(chacha_poly, "chacha20-poly1305", portable_chacha20_poly1305_encrypt(bd->buffer2, bd->buffer1, bd->key, bd->nonce, bd->ad, MIN(test_size, 512), bd->plain, test_size))
+BENCH(chacha_poly, "chacha20-poly1305", portable_chacha20_poly1305_encrypt(bd->cipher, bd->key, bd->nonce, bd->ad, MIN(test_size, 512), bd->plain, test_size))
 
 static const size_t test_sizes[] = {
     32, 63, 64, 511, 512, 1024, 8*1024, 32*1024, 64*1024, 128*1024, 512*1024, 1024*1024, MAX_TEST_SIZE

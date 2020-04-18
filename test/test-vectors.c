@@ -148,7 +148,6 @@ static int test_chacha20() {
             printf("success\n");
         }
     }
-    printf("All test passed\n");
     return 0;
 }
 
@@ -244,7 +243,6 @@ static int test_poly() {
             printf("success\n");
         }
     }
-    printf("All test passed\n");
     return 0;
 }
 
@@ -363,18 +361,17 @@ static struct aead_test_vector aead_rfc_tests[AEAD_TEST_VECTORS] = {
 
 static int test_aead() {
     printf("Testing chacha20-poly1305\n");
-    uint8_t buffer[MAX_TEST_SIZE] = {0};
-    uint8_t mac[RFC_8439_MAC_SIZE] = {0};
+    uint8_t buffer[MAX_TEST_SIZE + RFC_8439_MAC_SIZE] = {0};
     for (int i = 0; i <AEAD_TEST_VECTORS; i++) {
         struct aead_test_vector t = aead_rfc_tests[i];
         printf("- %s: ", t.title);
-        portable_chacha20_poly1305_encrypt(mac, buffer, t.key, t.nonce, t.ad, t.ad_size, t.plain_text, t.size);
+        portable_chacha20_poly1305_encrypt(buffer, t.key, t.nonce, t.ad, t.ad_size, t.plain_text, t.size);
         if (memcmp(buffer, t.cipher_text, t.size) != 0) {
             printf("failed encryption\n");
             UNEXPECTED_RESULT(t.cipher_text, buffer, t.size)
             return -1;
         }
-        else if (memcmp(mac, t.mac, RFC_8439_MAC_SIZE) != 0) {
+        else if (memcmp(buffer + t.size, t.mac, RFC_8439_MAC_SIZE) != 0) {
             printf("failed mac\n");
             UNEXPECTED_RESULT(t.mac, buffer, 16)
             return -1;
@@ -383,7 +380,6 @@ static int test_aead() {
             printf("success\n");
         }
     }
-    printf("All test passed\n");
     return 0;
 }
 
