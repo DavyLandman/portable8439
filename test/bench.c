@@ -95,8 +95,8 @@ static const size_t test_sizes[] = {
 static void report_speeds(double speeds[TEST_SIZES_LENGTH]) {
     sort_double_array(speeds, TEST_SIZES_LENGTH);
 
-    printf("Median speed: %.1f MB/s\n", median_double_array(speeds, TEST_SIZES_LENGTH));
-    printf("Speed range: %.1f MB/s, %.1f MB/s...%.1f MB/s, %.1f MB/s\n", speeds[0], speeds[1], speeds[TEST_SIZES_LENGTH - 2], speeds[ TEST_SIZES_LENGTH - 1]);
+    printf("Median speed: %.1f MiB/s\n", median_double_array(speeds, TEST_SIZES_LENGTH));
+    printf("Speed range: %.1f MiB/s, %.1f MiB/s...%.1f MiB/s, %.1f MiB/s\n", speeds[0], speeds[1], speeds[TEST_SIZES_LENGTH - 2], speeds[ TEST_SIZES_LENGTH - 1]);
 }
 
 static void bench_chacha(struct bench_data *bd) {
