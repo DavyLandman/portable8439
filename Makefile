@@ -2,7 +2,6 @@
 
 src = $(wildcard src/*.c) $(wildcard src/chacha-portable/*.c) $(wildcard src/poly1305-donna/*.c)
 
-CC?=gcc
 CFLAGS?=-O3
 CFLAGS+=-std=gnu99 -pedantic -Wall -Wextra -Isrc -Isrc/chacha-portable -Isrc/poly1305-donna
 LDFLAGS = 
