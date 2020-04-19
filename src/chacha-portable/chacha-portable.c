@@ -30,7 +30,6 @@
 
 #define CHACHA20_STATE_WORDS (16)
 
-
 static inline uint32_t load32_le(const uint8_t *source) {
     #ifdef FAST_PATH
     uint32_t result;
@@ -86,7 +85,7 @@ static inline uint32_t rotl32a(uint32_t x, uint32_t n) {
     c += d; b ^= c; b = rotl32a(b, 7);
 
 #ifndef BIG_CODE
-static inline void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b, int c, int d) {
+static inline void quarter_round(uint32_t *restrict s, int a, int b, int c, int d) {
     Qround(s[a], s[b], s[c], s[d])
 }
 #endif
@@ -95,7 +94,7 @@ static inline void quarter_round(uint32_t s[CHACHA20_STATE_WORDS], int a, int b,
     x(0) x(1) x(2)  x(3)  x(4)  x(5)  x(6)  x(7) \
     x(8) x(9) x(10) x(11) x(12) x(13) x(14) x(15)
 
-static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t output[CHACHA20_STATE_WORDS]) {
+static void core_block(const uint32_t *restrict start, uint32_t *restrict output) {
     #ifdef BIG_CODE 
     // instead of working on the array, we let the compiler allocate 16 local variables on the stack
     // this saves quite some speed
@@ -152,14 +151,14 @@ static inline void xor32_le(uint8_t* restrict dst, const uint8_t* restrict src, 
     #endif
 }
 
-static void xor_full_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
+static void xor_full_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad) {
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
         xor32_le(dest + (i * sizeof(uint32_t)), source + (i * sizeof(uint32_t)), pad + i);
     }
 }
 
-static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t pad[CHACHA20_STATE_WORDS], int chunk_size) {
+static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad, int chunk_size) {
     int full_blocks = chunk_size / sizeof(uint32_t);
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     for (int i = 0; i < full_blocks; i++) {
