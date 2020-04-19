@@ -13,8 +13,8 @@
 
 // xor data with a ChaCha20 keystream as per RFC8439
 void chacha20_xor_stream(
-        void *dest, 
-        const void *source, 
+        uint8_t *restrict dest, 
+        const uint8_t *restrict source, 
         size_t length,
         const uint8_t key[CHACHA20_KEY_SIZE],
         const uint8_t nonce[CHACHA20_NONCE_SIZE],

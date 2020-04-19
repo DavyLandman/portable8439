@@ -138,7 +138,7 @@ static void core_block(const uint32_t start[CHACHA20_STATE_WORDS], uint32_t outp
 
 #define U8(x) ((uint8_t)((x) & 0xFF))
 
-static inline void xor32_le(uint8_t* dst, const uint8_t* src, const uint32_t* pad) {
+static inline void xor32_le(uint8_t* restrict dst, const uint8_t* restrict src, const uint32_t* restrict pad) {
     #ifdef FAST_PATH
     uint32_t value;
     memcpy(&value, src, 4);
@@ -152,40 +152,36 @@ static inline void xor32_le(uint8_t* dst, const uint8_t* src, const uint32_t* pa
     #endif
 }
 
-static void xor_full_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
-    uint8_t* dst = dest;
-    const uint8_t* src = source;
+static void xor_full_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t pad[CHACHA20_STATE_WORDS]) {
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
-        xor32_le(dst + (i * sizeof(uint32_t)), src + (i * sizeof(uint32_t)), pad + i);
+        xor32_le(dest + (i * sizeof(uint32_t)), source + (i * sizeof(uint32_t)), pad + i);
     }
 }
 
-static void xor_block(void *dest, const void* source, const uint32_t pad[CHACHA20_STATE_WORDS], int chunk_size) {
+static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t pad[CHACHA20_STATE_WORDS], int chunk_size) {
     int full_blocks = chunk_size / sizeof(uint32_t);
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
-    uint8_t* dst = dest;
-    const uint8_t* src = source;
     for (int i = 0; i < full_blocks; i++) {
-        xor32_le(dst + (i * sizeof(uint32_t)), src + (i * sizeof(uint32_t)), pad + i);
+        xor32_le(dest + (i * sizeof(uint32_t)), source + (i * sizeof(uint32_t)), pad + i);
     }
 
-    dst += full_blocks * sizeof(uint32_t);
-    src += full_blocks * sizeof(uint32_t);
+    dest += full_blocks * sizeof(uint32_t);
+    source += full_blocks * sizeof(uint32_t);
     pad += full_blocks;
 
     switch(chunk_size % sizeof(uint32_t)) {
         case 1:
-            dst[0] = src[0] ^ U8(*pad);
+            dest[0] = source[0] ^ U8(*pad);
             break;
         case 2:
-            dst[0] = src[0] ^ U8(*pad);
-            dst[1] = src[1] ^ U8(*pad >> 8);
+            dest[0] = source[0] ^ U8(*pad);
+            dest[1] = source[1] ^ U8(*pad >> 8);
             break;
         case 3:
-            dst[0] = src[0] ^ U8(*pad);
-            dst[1] = src[1] ^ U8(*pad >> 8);
-            dst[2] = src[2] ^ U8(*pad >> 16);
+            dest[0] = source[0] ^ U8(*pad);
+            dest[1] = source[1] ^ U8(*pad >> 8);
+            dest[2] = source[2] ^ U8(*pad >> 16);
             break;
     }
 }
@@ -193,8 +189,8 @@ static void xor_block(void *dest, const void* source, const uint32_t pad[CHACHA2
 #define CHACHA20_BLOCK_SIZE ((CHACHA20_STATE_WORDS * sizeof(uint32_t)))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 void chacha20_xor_stream(
-        void *dest, 
-        const void *source, 
+        uint8_t *restrict dest, 
+        const uint8_t *restrict source, 
         size_t length,
         const uint8_t key[CHACHA20_KEY_SIZE],
         const uint8_t nonce[CHACHA20_NONCE_SIZE],
@@ -204,20 +200,18 @@ void chacha20_xor_stream(
     initialize_state(state, key, nonce, counter);
 
     uint32_t pad[CHACHA20_STATE_WORDS];
-    uint8_t* dst = dest;
-    const uint8_t* src = source;
     size_t full_blocks = length / CHACHA20_BLOCK_SIZE;
     for (size_t b = 0; b < full_blocks; b++) {
         core_block(state, pad);
         increment_counter(state);
-        xor_full_block(dst, src, pad);
-        dst += CHACHA20_BLOCK_SIZE;
-        src += CHACHA20_BLOCK_SIZE;
+        xor_full_block(dest, source, pad);
+        dest += CHACHA20_BLOCK_SIZE;
+        source += CHACHA20_BLOCK_SIZE;
     }
     size_t last_block = length % CHACHA20_BLOCK_SIZE;
     if (last_block > 0 ) {
         core_block(state, pad);
-        xor_block(dst, src, pad, last_block);
+        xor_block(dest, source, pad, last_block);
     }
 }
 
