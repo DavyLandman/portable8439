@@ -19,31 +19,31 @@
 #   define __HAVE_LITTLE_ENDIAN 1
 #endif
 
-#if defined(__HAVE_LITTLE_ENDIAN) && !defined(TEST_SLOW_PATH)
-#   define FAST_PATH
-#endif
-
-#if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__) && !defined(TEST_SLOW_PATH)
-#   define BIG_CODE
+#ifndef TEST_SLOW_PATH
+#   if defined(__HAVE_LITTLE_ENDIAN)
+#       define FAST_PATH
+#   endif
+#   if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__)
+#       define BIG_CODE
+#   endif
 #endif
 
 
 #define CHACHA20_STATE_WORDS (16)
 
-static inline uint32_t load32_le(const uint8_t *source) {
-    #ifdef FAST_PATH
-    uint32_t result;
-    memcpy(&result, source, 4);
-    return result;
-    #else
-    return 
-           (uint32_t)source[0]
-        | ((uint32_t)source[1]) << 8
-        | ((uint32_t)source[2]) << 16
-        | ((uint32_t)source[3]) << 24
-        ;
-    #endif
-}
+
+#ifdef FAST_PATH
+#define store_32_le(target, source) \
+    memcpy(&(target), source, 4)
+#else
+#define store_32_le(target, source) \
+    target \
+        =  (uint32_t)(source)[0] \
+        | ((uint32_t)(source)[1]) << 8 \
+        | ((uint32_t)(source)[2]) << 16 \
+        | ((uint32_t)(source)[3]) << 24
+#endif
+
 
 static void initialize_state(
         uint32_t state[CHACHA20_STATE_WORDS], 
@@ -55,18 +55,18 @@ static void initialize_state(
     state[1]  = 0x3320646e;
     state[2]  = 0x79622d32;
     state[3]  = 0x6b206574;
-    state[4]  = load32_le(key);
-    state[5]  = load32_le(key + 4);
-    state[6]  = load32_le(key + 8);
-    state[7]  = load32_le(key + 12);
-    state[8]  = load32_le(key + 16);
-    state[9]  = load32_le(key + 20);
-    state[10] = load32_le(key + 24);
-    state[11] = load32_le(key + 28);
+    store_32_le(state[4], key);
+    store_32_le(state[5], key + 4);
+    store_32_le(state[6], key + 8);
+    store_32_le(state[7], key + 12);
+    store_32_le(state[8], key + 16);
+    store_32_le(state[9], key + 20);
+    store_32_le(state[10], key + 24);
+    store_32_le(state[11], key + 28);
     state[12] = counter;
-    state[13] = load32_le(nonce);
-    state[14] = load32_le(nonce + 4);
-    state[15] = load32_le(nonce + 8);
+    store_32_le(state[13], nonce);
+    store_32_le(state[14], nonce + 4);
+    store_32_le(state[15], nonce + 8);
 }
 
 static inline void increment_counter(uint32_t state[CHACHA20_STATE_WORDS]) {
@@ -74,21 +74,13 @@ static inline void increment_counter(uint32_t state[CHACHA20_STATE_WORDS]) {
 }
 
 // source: http://blog.regehr.org/archives/1063
-static inline uint32_t rotl32a(uint32_t x, uint32_t n) {
-    return (x << n) | (x >> (32 - n));
-}
+#define rotl32a(x, n) ((x) << (n)) | ((x) >> (32 - (n)))
 
 #define Qround(a,b,c,d) \
     a += b; d ^= a; d = rotl32a(d, 16); \
     c += d; b ^= c; b = rotl32a(b, 12); \
     a += b; d ^= a; d = rotl32a(d, 8); \
     c += d; b ^= c; b = rotl32a(b, 7);
-
-#ifndef BIG_CODE
-static inline void quarter_round(uint32_t *restrict s, int a, int b, int c, int d) {
-    Qround(s[a], s[b], s[c], s[d])
-}
-#endif
 
 #define TIMES16(x) \
     x(0) x(1) x(2)  x(3)  x(4)  x(5)  x(6)  x(7) \
@@ -102,6 +94,12 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
     TIMES16(__LV)
 
     #define __Q(a,b,c,d) Qround(__s##a, __s##b, __s##c, __s##d)
+    #else
+    memcpy(output, start, CHACHA20_STATE_WORDS * 4);
+
+    #define __Q(a,b,c,d) Qround(output[a], output[b], output[c], output[d])
+    #endif
+
     for (int i = 0; i < 10; i++) {
         __Q(0, 4,  8, 12);
         __Q(1, 5,  9, 13);
@@ -113,22 +111,10 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
         __Q(3, 4,  9, 14);
     }
 
+    #ifdef BIG_CODE 
     #define __FIN(i) output[i] = start[i] + __s##i;
     TIMES16(__FIN)
     #else
-    memcpy(output, start, CHACHA20_STATE_WORDS * 4);
-
-    for (int i = 0; i < 10; i++) {
-        quarter_round(output, 0, 4,  8, 12);
-        quarter_round(output, 1, 5,  9, 13);
-        quarter_round(output, 2, 6, 10, 14);
-        quarter_round(output, 3, 7, 11, 15);
-        quarter_round(output, 0, 5, 10, 15);
-        quarter_round(output, 1, 6, 11, 12);
-        quarter_round(output, 2, 7,  8, 13);
-        quarter_round(output, 3, 4,  9, 14);
-    }
-
     for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
         output[i] += start[i];
     }
@@ -137,26 +123,26 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
 
 #define U8(x) ((uint8_t)((x) & 0xFF))
 
-static inline void xor32_le(uint8_t* restrict dst, const uint8_t* restrict src, const uint32_t* restrict pad) {
-    #ifdef FAST_PATH
-    uint32_t value;
-    memcpy(&value, src, 4);
-    value ^= *pad;
-    memcpy(dst, &value, 4);
-    #else
-    dst[0] = src[0] ^ U8(*pad);
-    dst[1] = src[1] ^ U8(*pad >> 8);
-    dst[2] = src[2] ^ U8(*pad >> 16);
-    dst[3] = src[3] ^ U8(*pad >> 24);
-    #endif
-}
 
-static void xor_full_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad) {
-    // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
-    for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
-        xor32_le(dest + (i * sizeof(uint32_t)), source + (i * sizeof(uint32_t)), pad + i);
+#ifdef FAST_PATH
+#   define xor32_le(dst, src, pad) \
+    uint32_t __value; \
+    memcpy(&__value, src, 4); \
+    __value ^= *(pad); \
+    memcpy(dst, &__value, 4);
+#else
+#   define xor32_le(dst, src, pad) \
+    (dst)[0] = (src)[0] ^ U8(*(pad)); \
+    (dst)[1] = (src)[1] ^ U8(*(pad) >> 8); \
+    (dst)[2] = (src)[2] ^ U8(*(pad) >> 16); \
+    (dst)[3] = (src)[3] ^ U8(*(pad) >> 24);
+#endif
+
+#define xor_full_block(dest, source, pad) \
+    for (int __i = 0; __i < CHACHA20_STATE_WORDS; __i++) { \
+        xor32_le((dest) + (__i * sizeof(uint32_t)), (source) + (__i * sizeof(uint32_t)), (pad) + __i) \
     }
-}
+
 
 static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad, int chunk_size) {
     int full_blocks = chunk_size / sizeof(uint32_t);
@@ -214,14 +200,23 @@ void chacha20_xor_stream(
     }
 }
 
-#ifndef FAST_PATH
-static inline void store32_le(uint8_t *target, const uint32_t *source) {
-    target[0] = U8(*source);
-    target[1] = U8(*source >> 8);
-    target[2] = U8(*source >> 16);
-    target[3] = U8(*source >> 24);
-}
+
+#ifdef FAST_PATH
+#define serialize(poly_key, result) memcpy(poly_key, result, 32)
+#else
+#define store32_le(target, source) \
+    (target)[0] = U8(*(source)); \
+    (target)[1] = U8(*(source) >> 8); \
+    (target)[2] = U8(*(source) >> 16); \
+    (target)[3] = U8(*(source) >> 24);
+
+#define serialize(poly_key, result) \
+    for (int i = 0; i < 32 / 4; i++) { \
+        store32_le(poly_key + (i * 4), result + i); \
+    }
 #endif
+
+
 
 void rfc8439_keygen(
         uint8_t poly_key[32],
@@ -232,12 +227,5 @@ void rfc8439_keygen(
     uint32_t result[CHACHA20_STATE_WORDS];
     initialize_state(state, key, nonce, 0);
     core_block(state, result);
-    //serialize
-    #ifdef FAST_PATH
-    memcpy(poly_key, result, 32);
-    #else
-    for (int i = 0; i < 32 / 4; i++) {
-        store32_le(poly_key + (i * 4), result + i);
-    }
-    #endif
+    serialize(poly_key, result);
 }
