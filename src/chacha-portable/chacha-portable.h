@@ -1,4 +1,4 @@
-#ifndef CHACHA_PORTABLE_H 
+#ifndef CHACHA_PORTABLE_H
 #define CHACHA_PORTABLE_H
 
 #if !defined(__cplusplus) && \

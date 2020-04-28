@@ -23,22 +23,19 @@ typedef struct poly1305_state_internal_t {
 } poly1305_state_internal_t;
 
 /* interpret two 8 bit unsigned integers as a 16 bit unsigned integer in little endian */
-static unsigned short
-U8TO16(const unsigned char *p) {
+static unsigned short U8TO16(const unsigned char *p) {
 	return
 		(((unsigned short)(p[0] & 0xff)      ) |
 	     ((unsigned short)(p[1] & 0xff) <<  8));
 }
 
 /* store a 16 bit unsigned integer as two 8 bit unsigned integers in little endian */
-static void
-U16TO8(unsigned char *p, unsigned short v) {
+static void U16TO8(unsigned char *p, unsigned short v) {
 	p[0] = (v      ) & 0xff;
 	p[1] = (v >>  8) & 0xff;
 }
 
-void
-poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
+void poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
 	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
 	unsigned short t0,t1,t2,t3,t4,t5,t6,t7;
 	size_t i;
@@ -67,8 +64,7 @@ poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
 	st->final = 0;
 }
 
-static void
-poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
+static void poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
 	const unsigned short hibit = (st->final) ? 0 : (1 << 11); /* 1 << 128 */
 	unsigned short t0,t1,t2,t3,t4,t5,t6,t7;
 	unsigned long d[10];
@@ -117,8 +113,7 @@ poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t by
 	}
 }
 
-POLY1305_NOINLINE void
-poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
+POLY1305_NOINLINE void poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
 	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
 	unsigned short c;
 	unsigned short g[10];

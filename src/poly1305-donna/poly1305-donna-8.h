@@ -24,8 +24,7 @@ typedef struct poly1305_state_internal_t {
 	unsigned char final;
 } poly1305_state_internal_t;
 
-void
-poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
+void poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
 	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
 	size_t i;
 
@@ -62,8 +61,7 @@ poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
 	st->final = 0;
 }
 
-static void
-poly1305_add(unsigned char h[17], const unsigned char c[17]) {
+static void poly1305_add(unsigned char h[17], const unsigned char c[17]) {
 	unsigned short u;
 	unsigned int i;
 	for (u = 0, i = 0; i < 17; i++) {
@@ -73,8 +71,7 @@ poly1305_add(unsigned char h[17], const unsigned char c[17]) {
 	}
 }
 
-static void
-poly1305_squeeze(unsigned char h[17], unsigned long hr[17]) {
+static void poly1305_squeeze(unsigned char h[17], unsigned long hr[17]) {
 	unsigned long u;
 	unsigned int i;
 	u = 0;
@@ -95,8 +92,7 @@ poly1305_squeeze(unsigned char h[17], unsigned long hr[17]) {
 	h[16] += (unsigned char)u;
 }
 
-static void
-poly1305_freeze(unsigned char h[17]) {
+static void poly1305_freeze(unsigned char h[17]) {
 	static const unsigned char minusp[17] = {
 		0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -116,8 +112,7 @@ poly1305_freeze(unsigned char h[17]) {
 		h[i] ^= negative & (horig[i] ^ h[i]);
 }
 
-static void
-poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
+static void poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
 	const unsigned char hibit = st->final ^ 1; /* 1 << 128 */
 
 	while (bytes >= poly1305_block_size) {
@@ -153,8 +148,7 @@ poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t by
 	}
 }
 
-POLY1305_NOINLINE void
-poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
+POLY1305_NOINLINE void poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
 	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
 	size_t i;
 

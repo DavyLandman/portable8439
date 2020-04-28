@@ -8,19 +8,12 @@ mkdir -p "$DST_DIR"
 
 SRC_DIR="src/"
 
-COMPACT_FILES=(compact_wipe compact_x25519 compact_ed25519)
+PORTABLE_FILES=(portable8439 portable_wipe)
 
-DONNA_ROOT="$SRC_DIR/poly1305-donna"
 
-DST_HEADER="$DST_DIR/compact25519.h"
-DST_SOURCE="$DST_DIR/compact25519.c"
+DST_HEADER="$DST_DIR/portable8439.h"
+DST_SOURCE="$DST_DIR/portable8439.c"
 
-function merge_donna_src() {
-    awk '
-    /#.*include "poly1305-donna-[0-9]+.h"/ { system("cat src/poly1305-donna/"$3); next; }
-    42
-    ' "$DONNA_ROOT/poly1305-donna.c"
-}
 
 function remove_header_guard() {
     # we reverse lines so that it is easier to detect the last endif to drop
@@ -28,7 +21,7 @@ function remove_header_guard() {
         awk '
         BEGIN{LAST_END_FOUND=0;} 
         /#endif/ && !LAST_END_FOUND { LAST_END_FOUND=1; next; } 
-        /#.*_H_*$/ { next; }
+        /#.*_H*$/ { next; }
         42
         ' | \
         tac
@@ -62,39 +55,37 @@ function make_everything_static() {
         -e 's/^\([^\ \t#{}()\/]\)/static \1/' \
         -e 's/static static/static/' \
         -e 's/static struct/struct/' \
+        -e 's/static typedef/typedef/' \
         -e 's/static extern/extern/' \
         -e 's/static const/const/'
 }
 
 function add_decl_spec() {
     sed \
-        -e 's/^static /static COMPACT_25519_DECL /' \
-        -e 's/^\([^\ \t#{}()\/*s]\)/COMPACT_25519_DECL \1/' # non static stuff like global header
+        -e 's/^static /static PORTABLE_8439_DECL /' \
+        -e 's/^\([^\ \t#{}()\/*]\)/PORTABLE_8439_DECL \1/' \
+        -e 's/^PORTABLE_8439_DECL static/static/' \
+        -e 's/^PORTABLE_8439_DECL typedef/typedef/'
 }
 
-merge_donna_src
-
-return (0)
-
-echo "// compact25519 $VERSION
-// Source: https://github.com/DavyLandman/compact25519
+echo "// portable8439 $VERSION
+// Source: https://github.com/DavyLandman/portable8439
 // Licensed under CC0-1.0
-// Based on Daniel Beer's Public Domain c25519 implementation
-// https://www.dlbeer.co.nz/oss/c25519.html version: 2017-10-05
+// Contains poly1305-donna (TODO: add specific version tag)
 
-#ifndef __COMPACT_25519_H
-#define __COMPACT_25519_H
+#ifndef __PORTABLE_8439_H
+#define __PORTABLE_8439_H
 #if defined(__cplusplus)
 extern \"C\" {
 #endif
 
-// provide your own decl specificier like "-DCOMPACT_25519_DECL=ICACHE_RAM_ATTR"
-#ifndef COMPACT_25519_DECL
-#define COMPACT_25519_DECL
+// provide your own decl specificier like "-DPORTABLE_8439_DECL=ICACHE_RAM_ATTR"
+#ifndef PORTABLE_8439_DECL
+#define PORTABLE_8439_DECL
 #endif
 " > "$DST_HEADER"
 
-for h in "${COMPACT_FILES[@]}"; do 
+for h in "${PORTABLE_FILES[@]}"; do 
     cat "$SRC_DIR/$h.h" | remove_header_guard 
 done | merge_includes | remove_double_blank_lines | add_decl_spec >> "$DST_HEADER" 
 
@@ -104,16 +95,15 @@ echo "#if defined(__cplusplus)
 #endif" >> "$DST_HEADER"
 
 
-echo "// compact25519 $VERSION
-// Source: https://github.com/DavyLandman/compact25519
+echo "// portable8439 $VERSION
+// Source: https://github.com/DavyLandman/portable8439
 // Licensed under CC0-1.0
-// Based on Daniel Beer's Public Domain c25519 implementation
-// https://www.dlbeer.co.nz/oss/c25519.html version: 2017-10-05
+// Contains poly1305-donna (TODO: add specific version tag)
 
-#include \"compact25519.h\"
+#include \"portable8439.h\"
 " > "$DST_SOURCE"
 
-for h in "${NESTED_FILES[@]}"; do 
+for h in "chacha-portable/chacha-portable" "poly1305-donna/poly1305-donna"; do 
     echo "// ******* BEGIN: $h.h ********"
     cat "$SRC_DIR/$h.h" | remove_header_guard | \
         remove_local_imports | remove_double_blank_lines | \
@@ -121,15 +111,32 @@ for h in "${NESTED_FILES[@]}"; do
     echo "// ******* END:   $h.h ********"
 done >> "$DST_SOURCE"
 
-for h in "${NESTED_FILES[@]}"; do 
-    echo "// ******* BEGIN: $h.c ********"
-    cat "$SRC_DIR/$h.c" | remove_local_imports | \
-    remove_double_blank_lines | make_everything_static | add_decl_spec
-    echo "// ******* END:   $h.c ********"
-done >> "$DST_SOURCE"
+function inline_src() {
+    remove_local_imports | \
+    remove_double_blank_lines | \
+    make_everything_static | \
+    add_decl_spec
+}
+
+echo "// ******* BEGIN: chacha-portable.c ********" >> "$DST_SOURCE"
+inline_src <"$SRC_DIR/chacha-portable/chacha-portable.c" >> "$DST_SOURCE"
+echo "// ******* END: chacha-portable.c ********" >> "$DST_SOURCE"
 
 
-for h in "${COMPACT_FILES[@]}"; do 
+DONNA_ROOT="$SRC_DIR/poly1305-donna"
+function merge_donna_src() {
+    awk '
+    /#.*include "poly1305-donna-[0-9]+.h"/ { system("cat src/poly1305-donna/"$3); next; }
+    42
+    ' "$DONNA_ROOT/poly1305-donna.c"
+}
+
+echo "// ******* BEGIN: poly1305-donna.c ********" >> "$DST_SOURCE"
+merge_donna_src | inline_src >> "$DST_SOURCE"
+echo "// ******* END: poly1305-donna.c ********" >> "$DST_SOURCE"
+
+
+for h in "${PORTABLE_FILES[@]}"; do 
     echo "// ******* BEGIN: $h.c ********"
     cat "$SRC_DIR/$h.c" | remove_local_imports | \
     remove_double_blank_lines | add_decl_spec
