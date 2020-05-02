@@ -31,28 +31,13 @@ function remove_local_imports() {
     sed 's/#include ".*h"//'
 }
 
-function merge_includes() {
-    awk '
-    /#include .*/ { includes[$0] = 1; next;}
-    { other[NR] = $0; next; }
-    END {
-        for (i in includes) {
-            print i;
-        }
-        for (i in other) {
-            print other[i];
-        }
-    }
-    '
-}
-
 function remove_double_blank_lines() {
     cat -s
 }
 
 function make_everything_static() {
     sed \
-        -e 's/^\([^\ \t#{}()\/]\)/static \1/' \
+        -e $'s/^\([^\ \t\#{}()\/]\)/static \\1/' \
         -e 's/static static/static/' \
         -e 's/static struct/struct/' \
         -e 's/static typedef/typedef/' \
@@ -63,7 +48,7 @@ function make_everything_static() {
 function add_decl_spec() {
     sed \
         -e 's/^static /static PORTABLE_8439_DECL /' \
-        -e 's/^\([^\ \t#{}()\/*]\)/PORTABLE_8439_DECL \1/' \
+        -e $'s/^\([^\ \t#{}()\/*]\)/PORTABLE_8439_DECL \\1/' \
         -e 's/^PORTABLE_8439_DECL static/static/' \
         -e 's/^PORTABLE_8439_DECL typedef/typedef/'
 }
@@ -87,7 +72,7 @@ extern \"C\" {
 
 for h in "${PORTABLE_FILES[@]}"; do 
     cat "$SRC_DIR/$h.h" | remove_header_guard 
-done | merge_includes | remove_double_blank_lines | add_decl_spec >> "$DST_HEADER" 
+done  | remove_double_blank_lines | add_decl_spec >> "$DST_HEADER" 
 
 echo "#if defined(__cplusplus)
 }
@@ -114,8 +99,8 @@ done >> "$DST_SOURCE"
 function inline_src() {
     remove_local_imports | \
     remove_double_blank_lines | \
-    make_everything_static | \
-    add_decl_spec
+    make_everything_static # | \
+    #add_decl_spec
 }
 
 echo "// ******* BEGIN: chacha-portable.c ********" >> "$DST_SOURCE"
