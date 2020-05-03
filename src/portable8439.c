@@ -64,6 +64,14 @@ static void poly1305_calculate_mac(
 }
 
 
+#define PM(p) ((uintptr_t)(p))
+
+// pointers overlap if the smaller is b 
+// s_size should be smaller or equal to b_size
+#define OVERLAPPING(s, s_size, b, b_size) \
+       (PM(s) < PM((b) + (b_size))) \
+    && (PM(b) < PM((s) + (s_size)))
+
 size_t portable_chacha20_poly1305_encrypt(
     uint8_t *restrict cipher_text,
     const uint8_t key[RFC_8439_KEY_SIZE],
@@ -73,9 +81,13 @@ size_t portable_chacha20_poly1305_encrypt(
     const uint8_t *restrict plain_text,
     size_t plain_text_size
 ) {
+    size_t new_size = plain_text_size + RFC_8439_TAG_SIZE;
+    if (OVERLAPPING(plain_text, plain_text_size, cipher_text, new_size)) {
+        return -1;
+    }
     chacha20_xor_stream(cipher_text, plain_text, plain_text_size, key, nonce, 1);
     poly1305_calculate_mac(cipher_text + plain_text_size, cipher_text, plain_text_size, key, nonce, ad, ad_size);
-    return plain_text_size + RFC_8439_TAG_SIZE;
+    return new_size;
 }
 
 size_t portable_chacha20_poly1305_decrypt(
@@ -90,6 +102,10 @@ size_t portable_chacha20_poly1305_decrypt(
     // first we calculate the mac and see if it lines up, only then do we decrypt
     uint8_t actual_mac[RFC_8439_TAG_SIZE];
     size_t actual_size = cipher_text_size - RFC_8439_TAG_SIZE;
+    if (OVERLAPPING(plain_text, actual_size, cipher_text, cipher_text_size)) {
+        return -1;
+    }
+
     poly1305_calculate_mac(actual_mac, cipher_text, actual_size, key, nonce, ad, ad_size);
 
     if (poly1305_verify(cipher_text + actual_size, actual_mac)) {

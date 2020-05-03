@@ -142,7 +142,7 @@ int main(void) {
     fill_crappy_random(bd->key, RFC_8439_KEY_SIZE, &rng);
     fill_crappy_random(bd->nonce, RFC_8439_NONCE_SIZE, &rng);
 
-    //bench_chacha(bd);
+    bench_chacha(bd);
     bench_poly(bd);
     bench_chacha_poly(bd);
 
