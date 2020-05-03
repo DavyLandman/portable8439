@@ -65,32 +65,31 @@ static void poly1305_calculate_mac(
 
 
 size_t portable_chacha20_poly1305_encrypt(
-    uint8_t *cipher_text,
+    uint8_t *restrict cipher_text,
     const uint8_t key[RFC_8439_KEY_SIZE],
     const uint8_t nonce[RFC_8439_NONCE_SIZE],
-    const uint8_t *ad, // can be NULL for no Additional Data
+    const uint8_t *restrict ad,
     size_t ad_size,  
-    const uint8_t *plain_text,
+    const uint8_t *restrict plain_text,
     size_t plain_text_size
 ) {
     chacha20_xor_stream(cipher_text, plain_text, plain_text_size, key, nonce, 1);
     poly1305_calculate_mac(cipher_text + plain_text_size, cipher_text, plain_text_size, key, nonce, ad, ad_size);
-    return plain_text_size + RFC_8439_MAC_SIZE;
+    return plain_text_size + RFC_8439_TAG_SIZE;
 }
 
 size_t portable_chacha20_poly1305_decrypt(
-    uint8_t *plain_text,
+    uint8_t *restrict plain_text,
     const uint8_t key[RFC_8439_KEY_SIZE],
     const uint8_t nonce[RFC_8439_NONCE_SIZE],
-    const uint8_t *ad, // can be NULL for no Additional Data
+    const uint8_t *restrict ad,
     size_t ad_size,  
-    const uint8_t *cipher_text,
+    const uint8_t *restrict cipher_text,
     size_t cipher_text_size
 ) {
     // first we calculate the mac and see if it lines up, only then do we decrypt
-    uint8_t actual_mac[RFC_8439_MAC_SIZE] = { 0 };
-    size_t actual_size = cipher_text_size - RFC_8439_MAC_SIZE;
-
+    uint8_t actual_mac[RFC_8439_TAG_SIZE];
+    size_t actual_size = cipher_text_size - RFC_8439_TAG_SIZE;
     poly1305_calculate_mac(actual_mac, cipher_text, actual_size, key, nonce, ad, ad_size);
 
     if (poly1305_verify(cipher_text + actual_size, actual_mac)) {
