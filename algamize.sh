@@ -8,7 +8,7 @@ mkdir -p "$DST_DIR"
 
 SRC_DIR="src/"
 
-PORTABLE_FILES=(portable8439 portable_wipe)
+PORTABLE_FILES=(portable8439)
 
 
 DST_HEADER="$DST_DIR/portable8439.h"

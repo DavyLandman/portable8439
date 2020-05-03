@@ -1,5 +1,4 @@
 #include "portable8439.h"
-#include "portable_wipe.h"
 #include "chacha-portable/chacha-portable.h"
 #include "poly1305-donna/poly1305-donna.h"
 
@@ -45,7 +44,6 @@ static void poly1305_calculate_mac(
     // start poly1305 mac
     poly1305_context poly_ctx;
     poly1305_init(&poly_ctx, poly_key);
-    portable_wipe(poly_key, __POLY1305_KEY_SIZE);
 
     if (ad != NULL && ad_size > 0) {
         // write AD if present
