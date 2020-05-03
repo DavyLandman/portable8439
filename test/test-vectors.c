@@ -254,7 +254,7 @@ struct aead_test_vector {
     uint8_t plain_text[MAX_TEST_SIZE];
     uint8_t cipher_text[MAX_TEST_SIZE];
     size_t size;
-    uint8_t mac[RFC_8439_MAC_SIZE];
+    uint8_t mac[RFC_8439_TAG_SIZE];
 };
 
 #define AEAD_TEST_VECTORS (2)
@@ -359,7 +359,7 @@ static struct aead_test_vector aead_rfc_tests[AEAD_TEST_VECTORS] = {
 
 static int test_aead() {
     printf("Testing chacha20-poly1305\n");
-    uint8_t buffer[MAX_TEST_SIZE + RFC_8439_MAC_SIZE] = {0};
+    uint8_t buffer[MAX_TEST_SIZE + RFC_8439_TAG_SIZE] = {0};
     for (int i = 0; i <AEAD_TEST_VECTORS; i++) {
         struct aead_test_vector t = aead_rfc_tests[i];
         printf("- %s: ", t.title);
@@ -369,7 +369,7 @@ static int test_aead() {
             UNEXPECTED_RESULT(t.cipher_text, buffer, t.size)
             return -1;
         }
-        else if (memcmp(buffer + t.size, t.mac, RFC_8439_MAC_SIZE) != 0) {
+        else if (memcmp(buffer + t.size, t.mac, RFC_8439_TAG_SIZE) != 0) {
             printf("failed mac\n");
             UNEXPECTED_RESULT(t.mac, buffer, 16)
             return -1;

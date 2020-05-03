@@ -1,10 +1,12 @@
 #include "../src/portable8439.h"
 #include "../src/chacha-portable/chacha-portable.h"
+#include "../src/poly1305-donna/poly1305-donna.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "pcg_random.h"
 
 static void fill_crappy_random(void* target, size_t length, pcg32_random_t* rng) {
@@ -29,7 +31,7 @@ struct bench_data {
     uint8_t ad[MAX_TEST_SIZE];
     uint8_t key[RFC_8439_KEY_SIZE];
     uint8_t nonce[RFC_8439_NONCE_SIZE];
-    uint8_t cipher[MAX_TEST_SIZE + RFC_8439_MAC_SIZE];
+    uint8_t cipher[MAX_TEST_SIZE + RFC_8439_TAG_SIZE];
 };
 
 
@@ -82,6 +84,8 @@ static double median_double_array(const double *array, size_t len) {
 
 BENCH(chacha, "chacha20", chacha20_xor_stream(bd->cipher, bd->plain, test_size, bd->key, bd->nonce, r))
 
+BENCH(poly, "poly1305", poly1305_auth(bd->cipher, bd->plain, test_size, bd->key))
+
 #define MIN(a,b) ((a) > (b) ? (b) : (a))
 BENCH(chacha_poly, "chacha20-poly1305", portable_chacha20_poly1305_encrypt(bd->cipher, bd->key, bd->nonce, bd->ad, MIN(test_size, 512), bd->plain, test_size))
 
@@ -108,6 +112,15 @@ static void bench_chacha(struct bench_data *bd) {
     report_speeds(speeds);
 }
 
+static void bench_poly(struct bench_data *bd) {
+    double speeds[TEST_SIZES_LENGTH];
+    printf("Running poly1305 benchmarks\n");
+    for (size_t i = 0; i < TEST_SIZES_LENGTH; i++) {
+        speeds[i] = bench__poly(bd, test_sizes[i]);
+    }
+    report_speeds(speeds);
+}
+
 static void bench_chacha_poly(struct bench_data *bd) {
     double speeds[TEST_SIZES_LENGTH];
     printf("Running chacha20-poly1305 benchmarks\n");
@@ -129,7 +142,8 @@ int main(void) {
     fill_crappy_random(bd->key, RFC_8439_KEY_SIZE, &rng);
     fill_crappy_random(bd->nonce, RFC_8439_NONCE_SIZE, &rng);
 
-    bench_chacha(bd);
+    //bench_chacha(bd);
+    bench_poly(bd);
     bench_chacha_poly(bd);
 
     free(bd);

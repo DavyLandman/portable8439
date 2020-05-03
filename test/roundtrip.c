@@ -27,7 +27,7 @@ int test8439(pcg32_random_t* rng) {
     printf("Round trip chacha20-poly1305 sizes 0..4096: ");
     uint8_t plain[MAX_TEST_SIZE] = { 0};
     uint8_t ad[MAX_TEST_SIZE] = { 0 };
-    uint8_t buffer[MAX_TEST_SIZE + RFC_8439_MAC_SIZE] = { 0 };
+    uint8_t buffer[MAX_TEST_SIZE + RFC_8439_TAG_SIZE] = { 0 };
     uint8_t buffer2[MAX_TEST_SIZE] = { 0 };
     uint8_t key[RFC_8439_KEY_SIZE] = { 0 };
     uint8_t nonce[RFC_8439_NONCE_SIZE] = { 0 };
