@@ -66,7 +66,9 @@ static void poly1305_calculate_mac(
 
 #define PM(p) ((uintptr_t)(p))
 
-// pointers overlap if the smaller is b 
+// pointers overlap if the smaller either ahead of the end, 
+// or its end is before the start of the other
+//
 // s_size should be smaller or equal to b_size
 #define OVERLAPPING(s, s_size, b, b_size) \
        (PM(s) < PM((b) + (b_size))) \

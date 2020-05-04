@@ -24,7 +24,8 @@
 
 #if defined(_MSC_VER) || defined(__cplusplus) 
 // add restrict support is possible
-#    if (defined(_MSC_VER) && _MSC_VER >= 1900) || defined(__clang__) || defined(__GNUC__)
+#    if (defined(_MSC_VER) && _MSC_VER >= 1900) \
+            || defined(__clang__) || defined(__GNUC__)
 #       define restrict __restrict
 #    else
 #       define restrict
@@ -36,19 +37,26 @@
 #define RFC_8439_NONCE_SIZE (12)
 
 /*
-    Encrypt/Seal plain text bytes into a cipher text that can only be decrypted by knowing the key, nonce and associated data.
+    Encrypt/Seal plain text bytes into a cipher text that can only be 
+    decrypted by knowing the key, nonce and associated data.
 
     input:
-        - key: RFC_8439_KEY_SIZE bytes that all parties have agreed upon beforehand
-        - nonce: RFC_8439_NONCE_SIZE bytes that should never be repeated for the same key. A counter or a pseudo-random value are fine.
-        - ad: associated data to include with calculating the tag of the cipher text. Can be null for empty.
-        - plain_text: data to be encrypted, pointer + size should not overlap with cipher_text pointer
+        - key: RFC_8439_KEY_SIZE bytes that all parties have agreed 
+            upon beforehand
+        - nonce: RFC_8439_NONCE_SIZE bytes that should never be repeated 
+            for the same key. A counter or a pseudo-random value are fine.
+        - ad: associated data to include with calculating the tag of the 
+            cipher text. Can be null for empty.
+        - plain_text: data to be encrypted, pointer + size should not overlap 
+            with cipher_text pointer
     
     output:
-        - cipher_text: encrypted plain_text with a tag appended. Make sure to allocate at least plain_text_size + RFC_8439_TAG_SIZE
+        - cipher_text: encrypted plain_text with a tag appended. Make sure to 
+            allocate at least plain_text_size + RFC_8439_TAG_SIZE
     
     returns:
-        - size of bytes written to cipher_text, can be -1 if overlapping pointers are passed for plain_text and cipher_text
+        - size of bytes written to cipher_text, can be -1 if overlapping 
+            pointers are passed for plain_text and cipher_text
 */
 size_t portable_chacha20_poly1305_encrypt(
     uint8_t *restrict cipher_text, 
@@ -65,13 +73,18 @@ size_t portable_chacha20_poly1305_encrypt(
     Decrypt/unseal cipher text given the right key, nonce, and aditional data. 
 
     input:
-        - key: RFC_8439_KEY_SIZE bytes that all parties have agreed upon beforehand
-        - nonce: RFC_8439_NONCE_SIZE bytes that should never be repeated for the same key. A counter or a pseudo-random value are fine.
-        - ad: associated data to include with calculating the tag of the cipher text. Can be null for empty.
+        - key: RFC_8439_KEY_SIZE bytes that all parties have agreed 
+            upon beforehand
+        - nonce: RFC_8439_NONCE_SIZE bytes that should never be repeated for 
+            the same key. A counter or a pseudo-random value are fine.
+        - ad: associated data to include with calculating the tag of the 
+            cipher text. Can be null for empty.
         - cipher_text: encrypted message. 
 
     output:
-        - plain_text: data to be encrypted, pointer + size should not overlap with cipher_text pointer, leave at least enough room for  cipher_text_size - RFC_8439_TAG_SIZE
+        - plain_text: data to be encrypted, pointer + size should not overlap 
+            with cipher_text pointer, leave at least enough room for  
+            cipher_text_size - RFC_8439_TAG_SIZE
     
     returns:
         - size of bytes written to plain_text, -1 signals either:
