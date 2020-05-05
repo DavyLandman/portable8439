@@ -2,6 +2,15 @@
 #include <string.h>
 #include <assert.h>
 
+// this is a fresh implementation of chacha20, based on the description in rfc8349
+// it's such a nice compact algorithm that it is easy to do.
+// In relationship to other c implementation this implementation:
+//  - pure c99
+//  - big & little endian support
+//  - safe for architectures that don't support unaligned reads
+//
+// Next to this, we try to be fast as possible without resorting inline assembly. 
+
 // based on https://sourceforge.net/p/predef/wiki/Endianness/
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
         __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -30,6 +39,7 @@
 
 
 #define CHACHA20_STATE_WORDS (16)
+#define CHACHA20_BLOCK_SIZE ((CHACHA20_STATE_WORDS * sizeof(uint32_t)))
 
 
 #ifdef FAST_PATH
@@ -69,9 +79,7 @@ static void initialize_state(
     store_32_le(state[15], nonce + 8);
 }
 
-static inline void increment_counter(uint32_t state[CHACHA20_STATE_WORDS]) {
-    state[12]++;
-}
+#define increment_counter(state) (state)[12]++
 
 // source: http://blog.regehr.org/archives/1063
 #define rotl32a(x, n) ((x) << (n)) | ((x) >> (32 - (n)))
@@ -95,7 +103,7 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
 
     #define __Q(a,b,c,d) Qround(__s##a, __s##b, __s##c, __s##d)
     #else
-    memcpy(output, start, CHACHA20_STATE_WORDS * 4);
+    memcpy(output, start, CHACHA20_STATE_WORDS * sizeof(uint32_t));
 
     #define __Q(a,b,c,d) Qround(output[a], output[b], output[c], output[d])
     #endif
@@ -171,7 +179,6 @@ static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, co
     }
 }
 
-#define CHACHA20_BLOCK_SIZE ((CHACHA20_STATE_WORDS * sizeof(uint32_t)))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 void chacha20_xor_stream(
         uint8_t *restrict dest, 
