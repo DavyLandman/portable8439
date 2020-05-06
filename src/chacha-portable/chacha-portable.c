@@ -146,18 +146,18 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
     (dst)[3] = (src)[3] ^ U8(*(pad) >> 24);
 #endif
 
-#define xor_full_block(dest, source, pad) \
-    for (int __i = 0; __i < CHACHA20_STATE_WORDS; __i++) { \
-        xor32_le((dest) + (__i * sizeof(uint32_t)), (source) + (__i * sizeof(uint32_t)), (pad) + __i) \
+#define index8_32(a, ix) ((a) + ((ix) * sizeof(uint32_t)))
+
+#define xor32_blocks(dest, source, pad, words) \
+    for (int __i = 0; __i < words; __i++) { \
+        xor32_le(index8_32(dest, __i), index8_32(source, __i), (pad) + __i) \
     }
 
 
 static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad, int chunk_size) {
     int full_blocks = chunk_size / sizeof(uint32_t);
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
-    for (int i = 0; i < full_blocks; i++) {
-        xor32_le(dest + (i * sizeof(uint32_t)), source + (i * sizeof(uint32_t)), pad + i);
-    }
+    xor32_blocks(dest, source, pad, full_blocks)
 
     dest += full_blocks * sizeof(uint32_t);
     source += full_blocks * sizeof(uint32_t);
@@ -179,7 +179,6 @@ static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, co
     }
 }
 
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 void chacha20_xor_stream(
         uint8_t *restrict dest, 
         const uint8_t *restrict source, 
@@ -196,7 +195,7 @@ void chacha20_xor_stream(
     for (size_t b = 0; b < full_blocks; b++) {
         core_block(state, pad);
         increment_counter(state);
-        xor_full_block(dest, source, pad);
+        xor32_blocks(dest, source, pad, CHACHA20_BLOCK_SIZE)
         dest += CHACHA20_BLOCK_SIZE;
         source += CHACHA20_BLOCK_SIZE;
     }
