@@ -39,12 +39,12 @@
 
 
 #define CHACHA20_STATE_WORDS (16)
-#define CHACHA20_BLOCK_SIZE ((CHACHA20_STATE_WORDS * sizeof(uint32_t)))
+#define CHACHA20_BLOCK_SIZE (CHACHA20_STATE_WORDS * sizeof(uint32_t))
 
 
 #ifdef FAST_PATH
 #define store_32_le(target, source) \
-    memcpy(&(target), source, 4)
+    memcpy(&(target), source, sizeof(uint32_t))
 #else
 #define store_32_le(target, source) \
     target \
@@ -55,12 +55,16 @@
 #endif
 
 
+
 static void initialize_state(
         uint32_t state[CHACHA20_STATE_WORDS], 
         const uint8_t key[CHACHA20_KEY_SIZE],
         const uint8_t nonce[CHACHA20_NONCE_SIZE],
         uint32_t counter
 ) {
+#ifdef static_assert 
+    static_assert(sizeof(uint32_t) == 4, "We don't support systems that do not conform to standard of uint32_t being exact 32bit wide")
+#endif
     state[0]  = 0x61707865;
     state[1]  = 0x3320646e;
     state[2]  = 0x79622d32;
@@ -135,9 +139,9 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
 #ifdef FAST_PATH
 #   define xor32_le(dst, src, pad) \
     uint32_t __value; \
-    memcpy(&__value, src, 4); \
+    memcpy(&__value, src, sizeof(uint32_t)); \
     __value ^= *(pad); \
-    memcpy(dst, &__value, 4);
+    memcpy(dst, &__value, sizeof(uint32_t));
 #else
 #   define xor32_le(dst, src, pad) \
     (dst)[0] = (src)[0] ^ U8(*(pad)); \
@@ -149,13 +153,13 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
 #define index8_32(a, ix) ((a) + ((ix) * sizeof(uint32_t)))
 
 #define xor32_blocks(dest, source, pad, words) \
-    for (int __i = 0; __i < words; __i++) { \
+    for (unsigned int __i = 0; __i < words; __i++) { \
         xor32_le(index8_32(dest, __i), index8_32(source, __i), (pad) + __i) \
     }
 
 
-static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad, int chunk_size) {
-    int full_blocks = chunk_size / sizeof(uint32_t);
+static void xor_block(uint8_t *restrict dest, const uint8_t *restrict source, const uint32_t *restrict pad, unsigned int chunk_size) {
+    unsigned int full_blocks = chunk_size / sizeof(uint32_t);
     // have to be carefull, we are going back from uint32 to uint8, so endianess matters again
     xor32_blocks(dest, source, pad, full_blocks)
 
@@ -199,7 +203,7 @@ void chacha20_xor_stream(
         dest += CHACHA20_BLOCK_SIZE;
         source += CHACHA20_BLOCK_SIZE;
     }
-    size_t last_block = length % CHACHA20_BLOCK_SIZE;
+    unsigned int last_block = (unsigned int)(length % CHACHA20_BLOCK_SIZE);
     if (last_block > 0 ) {
         core_block(state, pad);
         xor_block(dest, source, pad, last_block);

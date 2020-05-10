@@ -11,9 +11,8 @@
 #include <stdint.h>
 
 #if CHAR_BIT > 8
-#    error "Systems without native octals not suppoted"
+#    error "Systems without native octals not supported"
 #endif
-
 
 #define CHACHA20_KEY_SIZE (32)
 #define CHACHA20_NONCE_SIZE (12)
