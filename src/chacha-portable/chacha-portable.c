@@ -32,9 +32,6 @@
 #   if defined(__HAVE_LITTLE_ENDIAN)
 #       define FAST_PATH
 #   endif
-#   if !defined(__OPTIMIZE_SIZE__) && !defined(__NO_INLINE__)
-#       define BIG_CODE
-#   endif
 #endif
 
 
@@ -63,7 +60,7 @@ static void initialize_state(
         uint32_t counter
 ) {
 #ifdef static_assert 
-    static_assert(sizeof(uint32_t) == 4, "We don't support systems that do not conform to standard of uint32_t being exact 32bit wide")
+    static_assert(sizeof(uint32_t) == 4, "We don't support systems that do not conform to standard of uint32_t being exact 32bit wide");
 #endif
     state[0]  = 0x61707865;
     state[1]  = 0x3320646e;
@@ -99,18 +96,12 @@ static void initialize_state(
     x(8) x(9) x(10) x(11) x(12) x(13) x(14) x(15)
 
 static void core_block(const uint32_t *restrict start, uint32_t *restrict output) {
-    #ifdef BIG_CODE 
-    // instead of working on the array, we let the compiler allocate 16 local variables on the stack
-    // this saves quite some speed
+    // instead of working on the output array, 
+    // we let the compiler allocate 16 local variables on the stack
     #define __LV(i) uint32_t __s##i = start[i];
     TIMES16(__LV)
 
     #define __Q(a,b,c,d) Qround(__s##a, __s##b, __s##c, __s##d)
-    #else
-    memcpy(output, start, CHACHA20_STATE_WORDS * sizeof(uint32_t));
-
-    #define __Q(a,b,c,d) Qround(output[a], output[b], output[c], output[d])
-    #endif
 
     for (int i = 0; i < 10; i++) {
         __Q(0, 4,  8, 12);
@@ -123,14 +114,8 @@ static void core_block(const uint32_t *restrict start, uint32_t *restrict output
         __Q(3, 4,  9, 14);
     }
 
-    #ifdef BIG_CODE 
     #define __FIN(i) output[i] = start[i] + __s##i;
     TIMES16(__FIN)
-    #else
-    for (int i = 0; i < CHACHA20_STATE_WORDS; i++) {
-        output[i] += start[i];
-    }
-    #endif
 }
 
 #define U8(x) ((uint8_t)((x) & 0xFF))
@@ -221,8 +206,8 @@ void chacha20_xor_stream(
     (target)[3] = U8(*(source) >> 24);
 
 #define serialize(poly_key, result) \
-    for (int i = 0; i < 32 / 4; i++) { \
-        store32_le(poly_key + (i * 4), result + i); \
+    for (int i = 0; i < 32 / sizeof(uint32_t); i++) { \
+        store32_le(index8_32(poly_key, i), result + i); \
     }
 #endif
 
