@@ -206,7 +206,7 @@ void chacha20_xor_stream(
     (target)[3] = U8(*(source) >> 24);
 
 #define serialize(poly_key, result) \
-    for (int i = 0; i < 32 / sizeof(uint32_t); i++) { \
+    for (unsigned int i = 0; i < 32 / sizeof(uint32_t); i++) { \
         store32_le(index8_32(poly_key, i), result + i); \
     }
 #endif
