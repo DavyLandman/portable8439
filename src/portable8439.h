@@ -70,7 +70,7 @@ size_t portable_chacha20_poly1305_encrypt(
 
 
 /*
-    Decrypt/unseal cipher text given the right key, nonce, and aditional data. 
+    Decrypt/unseal cipher text given the right key, nonce, and additional data. 
 
     input:
         - key: RFC_8439_KEY_SIZE bytes that all parties have agreed 
