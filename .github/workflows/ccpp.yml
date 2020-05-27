@@ -20,7 +20,7 @@ jobs:
 
     - name: test slow path
       env:
-        CFLAGS: "-DTEST_SLOW_PATH -O3 -fsanitize=address"
+        CFLAGS: "-O3 -fsanitize=address -DPOLY1305_8BIT -DTEST_SLOW_PATH "
       run: make clean test 
 
 
