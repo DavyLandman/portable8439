@@ -184,7 +184,7 @@ void chacha20_xor_stream(
     for (size_t b = 0; b < full_blocks; b++) {
         core_block(state, pad);
         increment_counter(state);
-        xor32_blocks(dest, source, pad, CHACHA20_BLOCK_SIZE)
+        xor32_blocks(dest, source, pad, CHACHA20_STATE_WORDS)
         dest += CHACHA20_BLOCK_SIZE;
         source += CHACHA20_BLOCK_SIZE;
     }
