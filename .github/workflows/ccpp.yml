@@ -1,0 +1,34 @@
+name: Test C code
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: compile
+      run: make
+
+    - name: test everything
+      env:
+        CFLAGS: "-O3"
+      run: make test
+
+    - name: test slow path
+      env:
+        CFLAGS: "-DTEST_SLOW_PATH -O3"
+      run: make clean test 
+
+
+    - name: Set up Go 1.14
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+      id: go
+
+    - name: integration test
+      run: make test-dist
