@@ -15,12 +15,12 @@ jobs:
 
     - name: test everything
       env:
-        CFLAGS: "-O3"
+        CFLAGS: "-O3 -fsanitize=address"
       run: make test
 
     - name: test slow path
       env:
-        CFLAGS: "-DTEST_SLOW_PATH -O3"
+        CFLAGS: "-DTEST_SLOW_PATH -O3 -fsanitize=address"
       run: make clean test 
 
 

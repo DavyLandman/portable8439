@@ -3,7 +3,7 @@
 src = $(wildcard src/*.c) $(wildcard src/chacha-portable/*.c) $(wildcard src/poly1305-donna/*.c)
 
 CFLAGS?=-O3
-CFLAGS+=-std=c99 -pedantic -Wall -Wextra -Isrc -Isrc/chacha-portable -Isrc/poly1305-donna
+CFLAGS+=-std=c99 -pedantic -Wall -Wextra -Isrc -Isrc/chacha-portable -Isrc/poly1305-donna -fstack-protector
 LDFLAGS = 
 
 VERSION?=dev-version
