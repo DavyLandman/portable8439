@@ -20,6 +20,15 @@ jobs:
         uses: olegtarasov/get-tag@v1
         id: tagName
 
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
+        id: go
+
+      - name: integration test distribution
+        run: make test-dist
+
       - name: build & package release
         env:
           VERSION: ${{ steps.tagName.outputs.tag }}

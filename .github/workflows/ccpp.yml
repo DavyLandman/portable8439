@@ -4,25 +4,15 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v2
 
     - name: compile
       run: make
 
-    - name: test everything
-      env:
-        CFLAGS: "-O3 -fsanitize=address"
+    - name: compile
       run: make test
-
-    - name: test slow path
-      env:
-        CFLAGS: "-O3 -fsanitize=address -DPOLY1305_8BIT -DTEST_SLOW_PATH "
-      run: make clean test 
-
 
     - name: Set up Go 1.14
       uses: actions/setup-go@v1
@@ -32,3 +22,22 @@ jobs:
 
     - name: integration test
       run: make test-dist
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        poly: [8, 16, 32, 64]
+        path: ["", "-DTEST_SLOW_PATH"]
+        opt: ["-Os", "", "-O1", "-O2", "-O3"]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: test
+      env:
+        CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT"
+      run: make clean test
+
+
+
