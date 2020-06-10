@@ -56,7 +56,7 @@ function add_decl_spec() {
 echo "// portable8439 $VERSION
 // Source: https://github.com/DavyLandman/portable8439
 // Licensed under CC0-1.0
-// Contains poly1305-donna (TODO: add specific version tag)
+// Contains poly1305-donna e6ad6e091d30d7f4ec2d4f978be1fcfcbce72781 (Public Domain)
 
 #ifndef __PORTABLE_8439_H
 #define __PORTABLE_8439_H
@@ -83,7 +83,7 @@ echo "#if defined(__cplusplus)
 echo "// portable8439 $VERSION
 // Source: https://github.com/DavyLandman/portable8439
 // Licensed under CC0-1.0
-// Contains poly1305-donna (TODO: add specific version tag)
+// Contains poly1305-donna e6ad6e091d30d7f4ec2d4f978be1fcfcbce72781 (Public Domain)
 
 #include \"portable8439.h\"
 " > "$DST_SOURCE"
