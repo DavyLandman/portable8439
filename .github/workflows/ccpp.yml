@@ -40,5 +40,5 @@ jobs:
 
     - name: test slow
       env:
-        CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT"
-      run: make clean test -DTEST_SLOW_PATH
+        CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT -DTEST_SLOW_PATH"
+      run: make clean test 
