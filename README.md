@@ -39,7 +39,7 @@ and it required a modern compiler to make it fast on little-endian.
 
 ### Implementation
 
-- __chacha20__: a fresh implementation based on reading the RFC 8439.
+- __chacha20__: a fresh implementation based on the description in RFC 8439.
     It supports little/big endianness, avoids unaligned reads if they are
     not possible and is fast even on older compilers (use `-O2` or `-O3`).
 - __poly1305__: [floodberry's poly1305-donna](https://github.com/floodyberry/poly1305-donna)
@@ -51,7 +51,7 @@ and it required a modern compiler to make it fast on little-endian.
 
 ## Usage
 
-The design of the API is quite straight forward, there is not incremental/streaming
+The design of the API is quite straight forward, there is no incremental/streaming
 support since that makes it much easier to mess up.
 
 - `portable_chacha20_poly1305_encrypt` takes plain text buffer (plus optional
@@ -65,13 +65,39 @@ support since that makes it much easier to mess up.
     The function returns the size written to the plain text buffer, less than zero
     marks an decryption failure.
 
+Please make sure to study the original [RFC](https://tools.ietf.org/html/rfc8439)
+how to take care of your additional data, key, and nonce.
+_Rough_ summary: never use the same pair of key & nonce. Random nonce is fine but
+you have to make sure it is unique for the key. An incrementing nonce is also fine.
+If you can pick additional data based on something that chances the semantics of
+your protocol or something you already know about each other.
+
+### Configuring unknown platforms
+
+Portable 8439 is faster if it knows the platform is little endian and if the
+biggest integer supported by the compiler is also the fastest.
+
+If you are on a platform that is not included in the `__HAVE_LITTLE_ENDIAN`
+detection, you should supply `-D__HAVE_LITTLE_ENDIAN` to your compiler.
+
+If you are on a platform where the biggest math operations of the compiler are 
+not the quickest, try measuring the effect of changing the version of the poly1305
+implementation.
+
+* `-DPOLY1305_8BIT`, 8->16 bit multiplies, 32 bit additions
+* `-DPOLY1305_16BIT`, 16->32 bit multiples, 32 bit additions
+* `-DPOLY1305_32BIT`, 32->64 bit multiplies, 64 bit additions
+* `-DPOLY1305_64BIT`, 64->128 bit multiplies, 128 bit additions
+
+(quote from the poly1305-donna readme)
+
 ## Installing
 
-As package management in C is a bit of a mess we algamize releases into a single
-c and h file. So always download the released versions, it is easy to include in
-your project and also helps the c++ compiler do better optimization.
+As package management in C is a bit of a mess we amalgamate the source code into a single
+c and h file. Always download the [released versions](https://github.com/DavyLandman/portable8439/releases), they are easy to include in
+your project and also helps the compiler optimize code.
 
 ## License
 
-The code is licensed under CC0 (a public domain like license) and contains code
-from floodberry/poly1305 which is also under the public domain.
+The code is licensed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/) and contains code
+from floodberry/poly1305-donna which is also under the public domain.
