@@ -28,16 +28,17 @@ jobs:
     strategy:
       matrix:
         poly: [8, 16, 32, 64]
-        path: ["", "-DTEST_SLOW_PATH"]
         opt: ["-Os", "", "-O1", "-O2", "-O3"]
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: test
+    - name: test normal
       env:
         CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT"
       run: make clean test
 
-
-
+    - name: test slow
+      env:
+        CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT"
+      run: make clean test -DTEST_SLOW_PATH
