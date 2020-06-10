@@ -18,6 +18,13 @@ dist:
 	cp README.md dist/
 	cp LICENSE dist/
 
+PACKAGE_DIST="portable8439-${VERSION}"
+
+package-dist: dist
+	rm -rf "${PACKAGE_DIST}"
+	cp -r dist "${PACKAGE_DIST}"
+	zip -r -9 -X dist.zip "${PACKAGE_DIST}"
+
 bin/test-roundtrip: $(src) test/roundtrip.c
 	mkdir -p bin
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
