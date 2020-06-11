@@ -100,4 +100,4 @@ your project and also helps the compiler optimize code.
 ## License
 
 The code is licensed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/) and contains code
-from floodberry/poly1305-donna which is also under the public domain.
+from floodberry/poly1305-donna which is also under a public domain license.
