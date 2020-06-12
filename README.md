@@ -21,9 +21,9 @@ state to avoid replay attacks.
 I made this library since no other C library offered the following characteristics:
 
 - Support big-endian architectures
-- Support architectures that do not allow unaligned loads
+- Support architectures that do not allow unaligned loads (armv6/armv7)
 - C99 compliant
-- High performance
+- High performance (even on older compilers)
 - No external dependencies
 - Readable code
 - Implement latest version of chacha20 (96-bit nonce & 32bit counter)
