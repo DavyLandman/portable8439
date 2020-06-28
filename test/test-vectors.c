@@ -216,18 +216,6 @@ static int test_poly() {
     uint8_t tag[16] = {0};
     for (int i = 0; i <POLY_TEST_VECTORS; i++) {
         struct poly_test_vector t = poly_rfc_tests[i];
-        printf("- %s: ", t.title);
-        poly1305_auth(tag, t.msg, t.size, t.key);
-        if (memcmp(tag, t.tag, 16) != 0) {
-            printf("failed\n");
-            return -1;
-        }
-        else {
-            printf("success\n");
-        }
-    }
-    for (int i = 0; i <POLY_TEST_VECTORS; i++) {
-        struct poly_test_vector t = poly_rfc_tests[i];
         printf("- %s streaming: ", t.title);
         poly1305_context ctx;
         poly1305_init(&ctx, t.key);
