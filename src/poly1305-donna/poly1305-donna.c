@@ -59,13 +59,6 @@ void poly1305_update(poly1305_context *ctx, const unsigned char *m, size_t bytes
 	}
 }
 
-void poly1305_auth(unsigned char mac[16], const unsigned char *m, size_t bytes, const unsigned char key[32]) {
-	poly1305_context ctx;
-	poly1305_init(&ctx, key);
-	poly1305_update(&ctx, m, bytes);
-	poly1305_finish(&ctx, mac);
-}
-
 int poly1305_verify(const unsigned char mac1[16], const unsigned char mac2[16]) {
 	size_t i;
 	unsigned int dif = 0;
