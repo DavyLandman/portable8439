@@ -1,53 +1,74 @@
-.PHONY: clean test dist test-dist
+PROJ := portable8439
 
-src = $(wildcard src/*.c) $(wildcard src/chacha-portable/*.c) $(wildcard src/poly1305-donna/*.c)
+CFLAGS ?= -O3
+CFLAGS += -std=c99 -Wpedantic -Wall -Wextra -Isrc -Isrc/chacha-portable -Isrc/poly1305-donna -fstack-protector
+LDFLAGS :=
+VERSION ?= dev-version
+PREFIX ?= /usr/local
 
-CFLAGS?=-O3
-CFLAGS+=-std=c99 -pedantic -Wall -Wextra -Isrc -Isrc/chacha-portable -Isrc/poly1305-donna -fstack-protector
-LDFLAGS = 
+SRCDIR := src
+BLDDIR := dist
+TSTDIR := $(BLDDIR)/test
 
-VERSION?=dev-version
+SOURCES := $(shell find $(SRCDIR) -type f -iname '*.c')
+TESTSRC := $(filter-out test/bench.c, $(wildcard test/*.c))
+TESTBIN := $(patsubst test%, $(TSTDIR)%, $(patsubst %.c, %, $(TESTSRC)))
 
-bin/test-vectors: $(src) test/test-vectors.c
-	mkdir -p bin
-	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+MKDIR := mkdir -p --
+RM := rm -rf --
 
+.PHONY: all clean check install simple release uninstall
 
-dist:
-	bash algamize.sh dist/ "${VERSION}"
-	cp README.md dist/
-	cp LICENSE dist/
-
-PACKAGE_DIST="portable8439-${VERSION}"
-
-package-dist: dist
-	rm -rf "${PACKAGE_DIST}"
-	cp -r dist "${PACKAGE_DIST}"
-	zip -r -9 -X dist.zip "${PACKAGE_DIST}"
-
-bin/test-roundtrip: $(src) test/roundtrip.c
-	mkdir -p bin
-	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
-
-bin/bench: $(src) test/bench.c
-	mkdir -p bin
-	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
-
-test: bin/test-roundtrip bin/test-vectors
-	./bin/test-vectors
-	./bin/test-roundtrip
-
-
-test-dist: test/algamized-test.go dist
-	cd test && go run algamized-test.go
-
+all: $(BLDDIR)/lib$(PROJ).so $(BLDDIR)/lib$(PROJ).a $(BLDDIR)/$(PROJ).c
 
 clean:
-	rm -f bin/*
+	$(RM) $(BLDDIR)
 
+check: $(TESTBIN) $(TSTDIR)/algamized-test
+	for i in $^; do ./$$i; done
 
-bench: bin/bench
-	./bin/bench
+$(BLDDIR)/lib$(PROJ).so: $(BLDDIR)/$(PROJ).c
+	$(MKDIR) $(@D)
+	$(CC) $(CFLAGS) -shared $^ -o $@ $(LDFLAGS)
 
+$(BLDDIR)/lib$(PROJ).a: $(BLDDIR)/$(PROJ).c
+	$(MKDIR) $(@D)
+	$(CC) $(CFLAGS) -c $< -o $(<:.c=.o)
+	$(AR) rcs $@ $(<:.c=.o)
 
-test-linux: test test-dist
+simple: $(BLDDIR)/$(PROJ).c
+
+$(BLDDIR)/$(PROJ).h: $(BLDDIR)/$(PROJ).c
+
+$(BLDDIR)/$(PROJ).c:
+	$(MKDIR) $(@D)
+	bash ./algamize.sh $(BLDDIR) "$(VERSION)"
+
+$(TSTDIR)/%: $(SOURCES) test/%.c
+	$(MKDIR) $(@D)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(TSTDIR)/algamized-test: test/algamized-test.go | $(BLDDIR)/$(PROJ).c
+	pushd test; go build -o ../$@ ../$<
+
+release: $(BLDDIR)/$(PROJ)-$(VERSION).zip
+
+$(BLDDIR)/$(PROJ)-$(VERSION).zip: all
+	cp -a $(BLDDIR) $(PROJ)-$(VERSION)
+	cp LICENSE $(PROJ)-$(VERSION)
+	cp README.md $(PROJ)-$(VERSION)
+	$(RM) $(PROJ)-$(VERSION)/obj
+	zip -r -9 -X $@ $(PROJ)-$(VERSION)
+	$(RM) $(PROJ)-$(VERSION)
+
+install: all
+	install -Dm755 $(BLDDIR)/lib$(PROJ).so $(DESTDIR)$(PREFIX)/lib/lib$(PROJ).so
+	install -Dm755 $(BLDDIR)/lib$(PROJ).a $(DESTDIR)$(PREFIX)/lib/lib$(PROJ).a
+	install -Dm755 $(BLDDIR)/$(PROJ).h $(DESTDIR)$(PREFIX)/include/$(PROJ).h
+
+uninstall:
+	 rm -f -- $(DESTDIR)$(PREFIX)/lib/lib$(PROJ).so \
+	 	$(DESTDIR)$(PREFIX)/lib/lib$(PROJ).a \
+	 	$(DESTDIR)$(PREFIX)/include/$(PROJ).h
+
+$(V).SILENT:
