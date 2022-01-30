@@ -26,13 +26,16 @@ jobs:
           go-version: 1.14
         id: go
 
+      - name: Go dependencies
+        run: go get 'golang.org/x/crypto/chacha20poly1305'
+
       - name: integration test distribution
-        run: make test-dist
+        run: make check
 
       - name: build & package release
         env:
           VERSION: ${{ steps.tagName.outputs.tag }}
-        run: make package-dist 
+        run: make release
 
       - name: Create Release
         id: create_release

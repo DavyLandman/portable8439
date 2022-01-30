@@ -11,18 +11,17 @@ jobs:
     - name: compile
       run: make
 
-    - name: compile
-      run: make test
-
     - name: Set up Go 1.14
       uses: actions/setup-go@v1
       with:
         go-version: 1.14
       id: go
 
-    - name: integration test
-      run: make test-dist
+    - name: Go dependencies
+      run: go get 'golang.org/x/crypto/chacha20poly1305'
 
+    - name: tests
+      run: make check
 
   test:
     runs-on: ubuntu-latest
@@ -35,15 +34,18 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: go dependencies
+      run: go get 'golang.org/x/crypto/chacha20poly1305'
+
     - name: test normal
       env:
         CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT"
-      run: make clean test
+      run: make clean check
 
     - name: test slow
       env:
         CFLAGS: "-fsanitize=address ${{matrix.opt}} ${{ matrix.path }} -DPOLY1305_${{matrix.poly}}BIT -DTEST_SLOW_PATH"
-      run: make clean test 
+      run: make clean check
 
   qa:
     runs-on: ubuntu-latest
@@ -64,7 +66,7 @@ jobs:
         curl --create-dirs -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
         unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
         export PATH=$HOME/.sonar/build-wrapper-linux-x86:$PATH
-        build-wrapper-linux-x86-64 --out-dir bw-output make clean test
+        build-wrapper-linux-x86-64 --out-dir bw-output make clean check
         sonar-scanner \
           -Dsonar.organization=davylandman-github \
           -Dsonar.projectKey=DavyLandman_portable8439 \
