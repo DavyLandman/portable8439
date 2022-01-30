@@ -49,7 +49,7 @@ $(TSTDIR)/%: $(SOURCES) test/%.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(TSTDIR)/algamized-test: test/algamized-test.go | $(BLDDIR)/$(PROJ).c
-	pushd test; go build -o ../$@ ../$<
+	cd test; go build -o ../$@ ../$<
 
 release: $(BLDDIR)/$(PROJ)-$(VERSION).zip
 
